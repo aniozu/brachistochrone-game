@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>最速降下曲線ゲーム v52 normal-description</title>
+  <title>最速降下曲線ゲーム v53 mobile-fit-goal-higher</title>
   <style>
     :root {
       --bg: #0b0f16;
@@ -1074,6 +1074,161 @@
     }
 
 
+  
+    /* v53: compact mobile layout so the title and buttons do not cut off the game. */
+    .gameTitle {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: clip;
+    }
+
+    @media (max-width: 560px) {
+      .wrap {
+        width: min(98vw, calc((100dvh - 36px) * 1.6129));
+        padding: 3px 0;
+      }
+
+      .gameTitle {
+        font-size: clamp(17px, 5.2vw, 26px);
+        letter-spacing: 0.01em;
+        margin-bottom: 3px;
+      }
+    }
+
+    @media (max-height: 520px) {
+      .wrap {
+        width: min(98vw, calc((100dvh - 26px) * 1.6129));
+        padding: 2px 0;
+      }
+
+      .gameTitle {
+        font-size: clamp(15px, 4.2vh, 20px);
+        margin-bottom: 2px;
+      }
+    }
+
+    @media (max-width: 620px), (max-height: 560px) {
+      .modeOverlay {
+        padding: 8px;
+      }
+
+      .modeCard {
+        width: min(94vw, 620px);
+        max-height: 94dvh;
+        padding: clamp(12px, 3vmin, 22px);
+        overflow: hidden;
+      }
+
+      .modeTitle {
+        margin-top: 5px;
+        font-size: clamp(24px, 7.2vw, 42px);
+        white-space: nowrap;
+        letter-spacing: 0.01em;
+      }
+
+      .modeGrid {
+        margin-top: clamp(10px, 2.4vmin, 18px);
+        gap: clamp(8px, 1.8vmin, 14px);
+      }
+
+      .modeButton {
+        min-height: 92px;
+        padding: clamp(12px, 2.4vmin, 20px);
+        gap: 6px;
+        border-radius: 18px;
+      }
+
+      .modeButton span {
+        font-size: clamp(20px, 5.8vw, 32px);
+      }
+
+      .modeButton small {
+        font-size: clamp(10px, 3.1vw, 14px);
+        line-height: 1.22;
+      }
+    }
+
+    @media (max-height: 480px) {
+      .modeCard {
+        padding: 10px;
+      }
+
+      .modeKicker {
+        font-size: 10px;
+      }
+
+      .modeTitle {
+        font-size: clamp(20px, 6.2vh, 30px);
+      }
+
+      .modeGrid {
+        grid-template-columns: 1fr 1fr;
+        margin-top: 8px;
+      }
+
+      .modeButton {
+        min-height: 78px;
+        padding: 10px;
+      }
+
+      .modeButton span {
+        font-size: clamp(17px, 5vh, 26px);
+      }
+
+      .modeButton small {
+        font-size: 9.5px;
+      }
+    }
+
+    @media (max-width: 520px), (max-height: 520px) {
+      .scoreCard {
+        left: 7%;
+        right: 7%;
+        max-height: 91%;
+        padding: 8px;
+      }
+
+      .scoreNumber {
+        font-size: clamp(28px, 9.2vmin, 64px);
+      }
+
+      .scoreSub {
+        font-size: clamp(10px, 2.2vmin, 15px);
+      }
+
+      .scoreDetails {
+        font-size: 9px;
+        line-height: 1.15;
+      }
+
+      .scoreSubmitArea {
+        margin-top: 5px;
+        gap: 4px;
+      }
+
+      .nameRow {
+        gap: 5px;
+      }
+
+      .nameRow input {
+        padding: 4px 7px;
+        font-size: 9.5px;
+      }
+
+      .nameRow button,
+      .resultActions button {
+        font-size: 9px;
+        padding: 5px 6px;
+        line-height: 1.1;
+      }
+
+      .resultActions {
+        margin-top: 5px;
+        gap: 4px;
+      }
+    }
+
+
   </style>
 </head>
 <body>
@@ -1209,7 +1364,9 @@
       firstDescentEpsilon: 0.01,
       stopSpeedThreshold: 0.12,
       stopHeightEpsilon: 0.006,
-      randomMargin: 70
+      randomMargin: 70,
+      randomGoalMaxY: 440,
+      draggableGoalMaxY: 470
     };
 
     const A = { x: 120, y: 170 };
@@ -1763,16 +1920,18 @@
 
     function randomStopPosition() {
       const margin = config.randomMargin;
+      const maxY = Math.min(config.randomGoalMaxY, H - margin);
       return {
         x: rand(A.x + 360, W - margin),
-        y: rand(A.y + 80, H - margin)
+        y: rand(A.y + 80, maxY)
       };
     }
 
     function clampStopPosition(p) {
+      const maxY = Math.min(config.draggableGoalMaxY, H - config.randomMargin);
       return {
         x: Math.max(A.x + 280, Math.min(W - config.randomMargin, p.x)),
-        y: Math.max(A.y + 55, Math.min(H - config.randomMargin, p.y))
+        y: Math.max(A.y + 55, Math.min(maxY, p.y))
       };
     }
 
