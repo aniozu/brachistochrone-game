@@ -1,0 +1,2833 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>最速降下曲線ゲーム v52 normal-description</title>
+  <style>
+    :root {
+      --bg: #0b0f16;
+      --panel: #151b26;
+      --ink: #f4f7ff;
+      --muted: #aab4c8;
+      --player: #9bffbd;
+      --best: #ffd166;
+      --ball: #9bffbd;
+      --bad: #ff6b7a;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      display: grid;
+      place-items: center;
+      background:
+        radial-gradient(circle at 50% 0%, #243149 0%, #0b0f16 58%);
+      color: var(--ink);
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    .wrap {
+      width: min(1120px, 96vw, calc((100vh - 78px) * 1.6129));
+      padding: 8px 0;
+      box-sizing: border-box;
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: clamp(24px, 4vw, 42px);
+      letter-spacing: 0.02em;
+    }
+
+    .subtitle {
+      margin: 0 0 16px;
+      color: var(--muted);
+      line-height: 1.65;
+    }
+
+    .gameTitle {
+      margin: 0 0 8px;
+      text-align: center;
+      font-size: clamp(24px, 4.5vh, 48px);
+      font-weight: 950;
+      letter-spacing: 0.04em;
+      color: var(--ink);
+    }
+
+    .game {
+      background: rgba(21, 27, 38, 0.92);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 18px;
+      overflow: hidden;
+      box-shadow: 0 20px 70px rgba(0,0,0,0.42);
+    }
+
+    .hud {
+      padding: 12px 14px;
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      justify-content: center;
+      border-bottom: 1px solid rgba(255,255,255,0.10);
+    }
+
+    .hud.single {
+      justify-content: center;
+    }
+
+    .buttons {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    button {
+      border: 0;
+      border-radius: 999px;
+      padding: 10px 15px;
+      font-weight: 800;
+      background: var(--player);
+      color: #06111a;
+      cursor: pointer;
+    }
+
+    button.secondary {
+      background: #d9e2f2;
+    }
+
+    button:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    .miniHint {
+      color: var(--muted);
+      font-size: 14px;
+      text-align: center;
+    }
+
+    .canvasBox {
+      position: relative;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: auto;
+      background:
+        linear-gradient(rgba(255,255,255,0.035) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.035) 1px, transparent 1px),
+        #0b0f16;
+      background-size: 40px 40px;
+      touch-action: none;
+      user-select: none;
+    }
+
+    .scoreOverlay {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      opacity: 0;
+      transform: scale(0.92);
+      transition: opacity 180ms ease, transform 180ms ease;
+      pointer-events: none;
+    }
+
+
+    .scoreCard {
+      max-width: min(92vw, 620px);
+      max-height: min(88vh, 520px);
+      padding: clamp(16px, 4vmin, 34px);
+      box-sizing: border-box;
+      overflow: hidden;
+    }
+
+    .scoreLabel {
+      font-size: clamp(13px, 2.4vmin, 18px);
+      line-height: 1.1;
+    }
+
+    .scoreValue {
+      font-size: clamp(52px, 16vmin, 132px);
+      line-height: 0.9;
+    }
+
+    .scoreSubtitle {
+      font-size: clamp(15px, 3vmin, 24px);
+      line-height: 1.2;
+    }
+
+    .scoreDetails {
+      font-size: clamp(11px, 2.1vmin, 15px);
+      line-height: 1.35;
+    }
+
+    .resultButtons,
+    .scoreActions {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: clamp(6px, 1.4vmin, 12px);
+      max-width: 100%;
+    }
+
+    .resultButtons button,
+    .scoreActions button,
+    .scoreCard button {
+      font-size: clamp(11px, 2.2vmin, 15px);
+      padding: clamp(8px, 1.8vmin, 12px) clamp(10px, 2.4vmin, 18px);
+      white-space: nowrap;
+    }
+
+    @media (max-height: 520px), (max-width: 520px) {
+      .scoreCard {
+        max-height: 92vh;
+        padding: 12px;
+      }
+
+      .scoreValue {
+        font-size: clamp(42px, 13vmin, 86px);
+      }
+
+      .scoreSubtitle {
+        font-size: clamp(13px, 2.6vmin, 18px);
+      }
+
+      .scoreDetails {
+        font-size: 11px;
+      }
+
+      .resultButtons button,
+      .scoreActions button,
+      .scoreCard button {
+        padding: 7px 10px;
+      }
+    }
+
+
+    .scoreOverlay.show {
+      opacity: 1;
+      transform: scale(1);
+      animation: scorePop 900ms cubic-bezier(.2, 1.5, .2, 1);
+      pointer-events: auto;
+    }
+
+    .scoreCard {
+      min-width: min(560px, 88%);
+      padding: 28px 34px;
+      border-radius: 26px;
+      border: 1px solid rgba(255,255,255,0.18);
+      background:
+        radial-gradient(circle at top left, rgba(123,215,255,0.22), transparent 48%),
+        rgba(10, 14, 21, 0.88);
+      box-shadow: 0 28px 90px rgba(0,0,0,0.55);
+      text-align: center;
+      backdrop-filter: blur(10px);
+    }
+
+    .scoreLabel {
+      color: var(--muted);
+      font-weight: 800;
+      letter-spacing: 0.12em;
+      font-size: 15px;
+      text-transform: uppercase;
+    }
+
+    .scoreNumber {
+      margin-top: 6px;
+      font-size: clamp(58px, 12vw, 132px);
+      font-weight: 950;
+      line-height: 0.95;
+      letter-spacing: -0.06em;
+    }
+
+    .scoreSub {
+      margin-top: 14px;
+      color: var(--ink);
+      font-size: clamp(16px, 2.5vw, 24px);
+      font-weight: 800;
+    }
+
+    .scoreDetails {
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    .resultActions {
+      margin-top: 20px;
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      pointer-events: auto;
+    }
+
+    .resultActions button {
+      padding: 12px 18px;
+      font-size: 15px;
+    }
+
+
+    /* Responsive result overlay: keep the entire result card inside small screens. */
+    .scoreOverlay {
+      padding: clamp(8px, 2vmin, 18px);
+      box-sizing: border-box;
+    }
+
+    .scoreCard {
+      min-width: 0;
+      width: min(92vw, 560px);
+      max-width: 92vw;
+      max-height: 88vh;
+      padding: clamp(12px, 3.8vmin, 30px);
+      box-sizing: border-box;
+      border-radius: clamp(16px, 4vmin, 26px);
+      overflow: hidden;
+    }
+
+    .scoreLabel {
+      font-size: clamp(11px, 2.1vmin, 15px);
+      line-height: 1.1;
+    }
+
+    .scoreNumber {
+      margin-top: clamp(3px, 1vmin, 8px);
+      font-size: clamp(44px, 14vmin, 126px);
+      line-height: 0.9;
+    }
+
+    .scoreSub {
+      margin-top: clamp(8px, 2vmin, 14px);
+      font-size: clamp(13px, 3vmin, 23px);
+      line-height: 1.15;
+    }
+
+    .scoreDetails {
+      margin-top: clamp(6px, 1.6vmin, 10px);
+      font-size: clamp(10px, 2vmin, 14px);
+      line-height: 1.35;
+    }
+
+    .resultActions {
+      margin-top: clamp(10px, 2.6vmin, 20px);
+      gap: clamp(6px, 1.6vmin, 12px);
+    }
+
+    .resultActions button {
+      font-size: clamp(10px, 2.1vmin, 15px);
+      padding: clamp(7px, 1.7vmin, 12px) clamp(9px, 2.3vmin, 18px);
+      white-space: nowrap;
+    }
+
+    @media (max-width: 520px), (max-height: 520px) {
+      .scoreOverlay {
+        padding: 6px;
+      }
+
+      .scoreCard {
+        width: min(94vw, 520px);
+        max-height: 92vh;
+        padding: 10px;
+      }
+
+      .scoreNumber {
+        font-size: clamp(36px, 12vmin, 78px);
+      }
+
+      .scoreSub {
+        font-size: clamp(12px, 2.8vmin, 17px);
+      }
+
+      .scoreDetails {
+        font-size: 10px;
+        line-height: 1.25;
+      }
+
+      .resultActions {
+        margin-top: 8px;
+        gap: 6px;
+      }
+
+      .resultActions button {
+        font-size: 10px;
+        padding: 6px 8px;
+      }
+    }
+
+
+    @keyframes scorePop {
+      0% {
+        transform: scale(0.72);
+        filter: blur(3px);
+      }
+      50% {
+        transform: scale(1.06);
+        filter: blur(0);
+      }
+      100% {
+        transform: scale(1);
+      }
+    }
+
+    .notes {
+      margin: 14px 2px 0;
+      color: var(--muted);
+      line-height: 1.7;
+      font-size: 14px;
+    }
+
+    code {
+      color: #e1f4ff;
+      background: rgba(255,255,255,0.08);
+      border-radius: 6px;
+      padding: 2px 6px;
+    }
+
+    @media (max-height: 560px) {
+      .wrap {
+        width: min(98vw, calc((100vh - 42px) * 1.6129));
+        padding: 4px 0;
+      }
+
+      .gameTitle {
+        font-size: 22px;
+        margin-bottom: 4px;
+      }
+
+      .game {
+        border-radius: 14px;
+      }
+    }
+
+    @media (max-width: 760px) {
+      .hud {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .miniHint {
+        text-align: left;
+      }
+    }
+  
+    /* v34: Result card is sized relative to the animation window, not the viewport.
+       It stays between 20% and 80% of the canvas width by default. */
+    .scoreOverlay {
+      padding: 0;
+      box-sizing: border-box;
+      overflow: hidden;
+    }
+
+    .scoreCard {
+      position: absolute;
+      left: 20%;
+      right: 20%;
+      width: auto;
+      min-width: 0;
+      max-width: none;
+      max-height: 84%;
+      top: 50%;
+      transform: translateY(-50%);
+      padding: clamp(10px, 3.2vmin, 28px);
+      box-sizing: border-box;
+      overflow: hidden;
+    }
+
+    .scoreNumber {
+      font-size: clamp(36px, 11vmin, 112px);
+      line-height: 0.9;
+    }
+
+    .scoreSub {
+      font-size: clamp(12px, 2.6vmin, 22px);
+      line-height: 1.15;
+    }
+
+    .scoreDetails {
+      font-size: clamp(10px, 1.9vmin, 14px);
+      line-height: 1.3;
+    }
+
+    .resultActions {
+      margin-top: clamp(8px, 2vmin, 16px);
+      gap: clamp(5px, 1.2vmin, 10px);
+    }
+
+    .resultActions button {
+      font-size: clamp(9px, 1.9vmin, 14px);
+      padding: clamp(6px, 1.4vmin, 10px) clamp(7px, 1.9vmin, 14px);
+      white-space: normal;
+      line-height: 1.15;
+    }
+
+    @media (max-width: 620px), (max-height: 520px) {
+      .scoreCard {
+        left: 12%;
+        right: 12%;
+        max-height: 88%;
+        padding: 9px;
+      }
+
+      .scoreNumber {
+        font-size: clamp(30px, 10vmin, 70px);
+      }
+
+      .scoreLabel {
+        font-size: 10px;
+      }
+
+      .scoreSub {
+        font-size: clamp(11px, 2.4vmin, 16px);
+      }
+
+      .scoreDetails {
+        font-size: 9.5px;
+        line-height: 1.2;
+      }
+
+      .resultActions {
+        margin-top: 7px;
+        gap: 5px;
+      }
+
+      .resultActions button {
+        font-size: 9.5px;
+        padding: 5px 7px;
+      }
+    }
+
+    @media (max-width: 420px), (max-height: 430px) {
+      .scoreCard {
+        left: 6%;
+        right: 6%;
+      }
+    }
+
+
+  
+    /* v35: The rounded animation arena itself fits inside the viewport. */
+    body {
+      width: 100vw;
+      height: 100vh;
+      min-height: 0;
+      overflow: hidden;
+    }
+
+    .wrap {
+      width: min(1120px, 96vw, calc((100vh - 54px) * 1.6129));
+      padding: 6px 0;
+      box-sizing: border-box;
+    }
+
+    .gameTitle {
+      margin: 0 0 6px;
+      font-size: clamp(22px, 4.1vh, 44px);
+      line-height: 1;
+    }
+
+    .subtitle,
+    .hud {
+      display: none !important;
+    }
+
+    .game {
+      border-radius: clamp(14px, 2.8vmin, 22px);
+      overflow: hidden;
+    }
+
+    .canvasBox {
+      position: relative;
+      border-radius: inherit;
+      overflow: hidden;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: auto;
+    }
+
+    @media (max-height: 560px) {
+      .wrap {
+        width: min(98vw, calc((100vh - 32px) * 1.6129));
+        padding: 3px 0;
+      }
+
+      .gameTitle {
+        margin-bottom: 3px;
+        font-size: clamp(18px, 4.3vh, 28px);
+      }
+
+      .game {
+        border-radius: 12px;
+      }
+    }
+
+    @media (max-width: 520px) {
+      .wrap {
+        width: min(98vw, calc((100vh - 42px) * 1.6129));
+      }
+
+      .gameTitle {
+        font-size: clamp(21px, 7vw, 34px);
+      }
+    }
+
+
+  
+    .modeOverlay {
+      position: fixed;
+      inset: 0;
+      z-index: 20;
+      display: grid;
+      place-items: center;
+      padding: 20px;
+      background:
+        radial-gradient(circle at 30% 10%, rgba(123,215,255,0.18), transparent 32%),
+        radial-gradient(circle at 80% 20%, rgba(255,209,102,0.16), transparent 30%),
+        rgba(5, 8, 13, 0.84);
+      backdrop-filter: blur(8px);
+    }
+
+    .modeOverlay.hidden {
+      display: none;
+    }
+
+    .modeCard {
+      width: min(720px, 92vw);
+      border-radius: clamp(18px, 4vmin, 30px);
+      border: 1px solid rgba(255,255,255,0.16);
+      background:
+        radial-gradient(circle at top left, rgba(123,215,255,0.22), transparent 44%),
+        rgba(12, 17, 26, 0.94);
+      box-shadow: 0 30px 90px rgba(0,0,0,0.55);
+      padding: clamp(20px, 4.5vmin, 42px);
+      text-align: center;
+    }
+
+    .modeKicker {
+      color: var(--muted);
+      font-weight: 900;
+      letter-spacing: 0.16em;
+      font-size: clamp(12px, 2vmin, 15px);
+    }
+
+    .modeTitle {
+      margin-top: 8px;
+      font-size: clamp(34px, 7vmin, 68px);
+      line-height: 1;
+      font-weight: 950;
+      letter-spacing: 0.04em;
+    }
+
+    .modeGrid {
+      margin-top: clamp(18px, 4vmin, 34px);
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: clamp(12px, 2.5vmin, 20px);
+    }
+
+    .modeButton {
+      border-radius: 24px;
+      padding: clamp(18px, 3vmin, 28px);
+      min-height: 150px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 12px;
+      background: linear-gradient(180deg, #9bffbd, #62d992);
+      color: #06111a;
+      text-align: left;
+      box-shadow: inset 0 -4px 0 rgba(0,0,0,0.12);
+    }
+
+    .modeButton.challenge {
+      background: linear-gradient(180deg, #ffd166, #ffb84d);
+    }
+
+    .modeButton span {
+      font-size: clamp(24px, 4.2vmin, 40px);
+      font-weight: 950;
+      letter-spacing: 0.04em;
+    }
+
+    .modeButton small {
+      font-size: clamp(12px, 2vmin, 16px);
+      line-height: 1.35;
+      font-weight: 800;
+      opacity: 0.86;
+    }
+
+    @media (max-width: 620px) {
+      .modeGrid {
+        grid-template-columns: 1fr;
+      }
+
+      .modeButton {
+        min-height: 112px;
+      }
+    }
+
+
+  
+    .scoreSubmitArea {
+      margin-top: clamp(8px, 2vmin, 16px);
+      display: grid;
+      gap: 8px;
+    }
+
+    .scoreSubmitArea.hidden {
+      display: none;
+    }
+
+    .nameRow {
+      display: flex;
+      gap: 8px;
+      justify-content: center;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .nameRow input {
+      width: min(230px, 62%);
+      border: 1px solid rgba(255,255,255,0.22);
+      border-radius: 999px;
+      padding: clamp(7px, 1.6vmin, 11px) clamp(10px, 2vmin, 14px);
+      background: rgba(255,255,255,0.10);
+      color: var(--ink);
+      font-weight: 800;
+      font-size: clamp(11px, 2vmin, 15px);
+      outline: none;
+      text-align: center;
+    }
+
+    .nameRow input::placeholder {
+      color: rgba(244,247,255,0.54);
+    }
+
+    .nameRow button {
+      font-size: clamp(10px, 2vmin, 14px);
+      padding: clamp(7px, 1.6vmin, 11px) clamp(10px, 2.2vmin, 16px);
+    }
+
+    .submitStatus {
+      min-height: 1.2em;
+      color: var(--muted);
+      font-size: clamp(10px, 1.9vmin, 13px);
+      line-height: 1.25;
+    }
+
+    .rankingList {
+      max-height: min(22vh, 132px);
+      overflow: auto;
+      padding: 0 4px;
+      color: rgba(244,247,255,0.86);
+      font-size: clamp(10px, 1.85vmin, 13px);
+      line-height: 1.35;
+      text-align: left;
+    }
+
+    .rankRow {
+      display: grid;
+      grid-template-columns: 2.2em 1fr auto;
+      gap: 8px;
+      padding: 2px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.07);
+    }
+
+    .rankRow .rankScore {
+      font-variant-numeric: tabular-nums;
+      font-weight: 900;
+      color: var(--best);
+    }
+
+    @media (max-height: 520px), (max-width: 520px) {
+      .scoreSubmitArea {
+        gap: 5px;
+        margin-top: 6px;
+      }
+
+      .rankingList {
+        max-height: 82px;
+        font-size: 9px;
+      }
+
+      .nameRow input {
+        width: 58%;
+        padding: 5px 8px;
+        font-size: 10px;
+      }
+
+      .nameRow button {
+        padding: 5px 7px;
+        font-size: 9.5px;
+      }
+    }
+
+
+  
+    /* v44: keep the result screen compact; rankings appear in a separate modal. */
+    .scoreSubmitArea {
+      margin-top: clamp(8px, 2vmin, 14px);
+      gap: 6px;
+    }
+
+    .scoreSubmitArea .rankingList {
+      display: none;
+    }
+
+    .highScoreOverlay {
+      position: fixed;
+      inset: 0;
+      z-index: 40;
+      display: grid;
+      place-items: center;
+      padding: 18px;
+      background: rgba(5, 8, 13, 0.72);
+      backdrop-filter: blur(8px);
+    }
+
+    .highScoreOverlay.hidden {
+      display: none;
+    }
+
+    .highScoreCard {
+      width: min(560px, 90vw);
+      max-height: 88vh;
+      overflow: hidden;
+      border-radius: clamp(18px, 4vmin, 30px);
+      border: 1px solid rgba(255,255,255,0.18);
+      background:
+        radial-gradient(circle at top left, rgba(255,209,102,0.22), transparent 44%),
+        rgba(10, 14, 21, 0.95);
+      box-shadow: 0 30px 90px rgba(0,0,0,0.58);
+      padding: clamp(18px, 4vmin, 34px);
+      box-sizing: border-box;
+      text-align: center;
+    }
+
+    .highScoreKicker {
+      color: var(--muted);
+      font-weight: 900;
+      letter-spacing: 0.16em;
+      font-size: clamp(11px, 2vmin, 15px);
+    }
+
+    .highScoreTitle {
+      margin-top: 6px;
+      font-size: clamp(24px, 5vmin, 44px);
+      font-weight: 950;
+      line-height: 1;
+    }
+
+    .highScoreList {
+      margin-top: clamp(14px, 3vmin, 24px);
+      max-height: min(48vh, 360px);
+      overflow: auto;
+      text-align: left;
+      color: rgba(244,247,255,0.9);
+      font-size: clamp(12px, 2.3vmin, 16px);
+      line-height: 1.35;
+      padding-right: 4px;
+    }
+
+    .highScoreList .rankRow {
+      display: grid;
+      grid-template-columns: 2.4em 1fr auto;
+      gap: 10px;
+      align-items: center;
+      padding: 7px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+    }
+
+    .highScoreList .rankScore {
+      font-weight: 950;
+      color: var(--best);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .highScoreCard button {
+      margin-top: clamp(14px, 3vmin, 24px);
+      background: #d9e2f2;
+      font-size: clamp(12px, 2.2vmin, 15px);
+      padding: clamp(8px, 1.8vmin, 12px) clamp(18px, 4vmin, 28px);
+    }
+
+    @media (max-height: 520px), (max-width: 520px) {
+      .highScoreCard {
+        width: 94vw;
+        padding: 14px;
+      }
+
+      .highScoreList {
+        max-height: 42vh;
+        font-size: 11px;
+      }
+
+      .highScoreList .rankRow {
+        padding: 5px 0;
+      }
+    }
+
+
+  
+    /* v45: quieter high-score window, visually close to the result card. */
+    .highScoreOverlay {
+      position: absolute;
+      inset: 0;
+      z-index: 8;
+      display: grid;
+      place-items: center;
+      padding: 0;
+      background: rgba(5, 8, 13, 0.28);
+      backdrop-filter: none;
+    }
+
+    .highScoreOverlay.hidden {
+      display: none;
+    }
+
+    .highScoreCard {
+      position: absolute;
+      left: 20%;
+      right: 20%;
+      width: auto;
+      max-width: none;
+      max-height: 84%;
+      top: 50%;
+      transform: translateY(-50%);
+      border-radius: clamp(16px, 3.2vmin, 26px);
+      border: 1px solid rgba(255,255,255,0.18);
+      background:
+        radial-gradient(circle at top left, rgba(123,215,255,0.16), transparent 42%),
+        rgba(10, 14, 21, 0.91);
+      box-shadow: 0 24px 80px rgba(0,0,0,0.50);
+      padding: clamp(12px, 3.4vmin, 28px);
+      box-sizing: border-box;
+      text-align: center;
+      overflow: hidden;
+    }
+
+    .highScoreKicker {
+      color: var(--muted);
+      font-weight: 900;
+      letter-spacing: 0.14em;
+      font-size: clamp(10px, 1.9vmin, 14px);
+    }
+
+    .highScoreTitle {
+      margin-top: 5px;
+      font-size: clamp(20px, 4.2vmin, 38px);
+      font-weight: 950;
+      line-height: 1;
+    }
+
+    .myRankLine {
+      margin-top: clamp(8px, 2vmin, 14px);
+      color: var(--best);
+      font-size: clamp(13px, 2.5vmin, 20px);
+      font-weight: 950;
+      line-height: 1.25;
+    }
+
+    .highScoreList {
+      margin-top: clamp(10px, 2.4vmin, 18px);
+      max-height: min(42vh, 300px);
+      overflow: auto;
+      text-align: left;
+      color: rgba(244,247,255,0.88);
+      font-size: clamp(10px, 2vmin, 14px);
+      line-height: 1.3;
+      padding-right: 3px;
+    }
+
+    .highScoreList .rankRow {
+      display: grid;
+      grid-template-columns: 2.2em 1fr auto;
+      gap: 8px;
+      align-items: center;
+      padding: 5px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.07);
+    }
+
+    .highScoreList .rankScore {
+      font-weight: 950;
+      color: var(--best);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .highScoreCard button {
+      margin-top: clamp(10px, 2.4vmin, 18px);
+      background: #d9e2f2;
+      font-size: clamp(10px, 2vmin, 14px);
+      padding: clamp(7px, 1.7vmin, 11px) clamp(16px, 3.6vmin, 26px);
+    }
+
+    @media (max-width: 620px), (max-height: 520px) {
+      .highScoreCard {
+        left: 12%;
+        right: 12%;
+        max-height: 88%;
+        padding: 10px;
+      }
+
+      .highScoreList {
+        max-height: 36vh;
+        font-size: 9.5px;
+      }
+
+      .highScoreList .rankRow {
+        padding: 4px 0;
+      }
+    }
+
+    @media (max-width: 420px), (max-height: 430px) {
+      .highScoreCard {
+        left: 6%;
+        right: 6%;
+      }
+    }
+
+
+  
+    /* v50: HIGH SCORES is the title; no Japanese subtitle. */
+    .highScoreKicker {
+      font-size: clamp(24px, 5.2vmin, 46px);
+      line-height: 1;
+      color: var(--ink);
+      letter-spacing: 0.05em;
+    }
+
+    .highScoreTitle {
+      display: none;
+    }
+
+
+  
+    /* v51: fit all top 10 high-score rows without scrolling. */
+    .highScoreCard {
+      max-height: 92%;
+      padding: clamp(12px, 3vmin, 24px);
+    }
+
+    .highScoreKicker {
+      font-size: clamp(22px, 4.8vmin, 42px);
+      margin-bottom: clamp(8px, 1.8vmin, 14px);
+    }
+
+    .myRankLine {
+      margin-top: 0;
+      margin-bottom: clamp(8px, 1.8vmin, 14px);
+      font-size: clamp(12px, 2.2vmin, 18px);
+    }
+
+    .highScoreList {
+      max-height: none;
+      overflow: visible;
+      margin-top: 0;
+      font-size: clamp(10px, 1.8vmin, 14px);
+      line-height: 1.2;
+    }
+
+    .highScoreList .rankRow {
+      padding: clamp(2px, 0.8vmin, 5px) 0;
+      gap: 8px;
+    }
+
+    .highScoreCard button {
+      margin-top: clamp(8px, 1.8vmin, 14px);
+      padding: clamp(6px, 1.4vmin, 10px) clamp(16px, 3.2vmin, 24px);
+    }
+
+    @media (max-height: 520px), (max-width: 520px) {
+      .highScoreKicker {
+        font-size: clamp(20px, 4.3vmin, 34px);
+      }
+
+      .myRankLine {
+        font-size: 10.5px;
+        margin-bottom: 6px;
+      }
+
+      .highScoreList {
+        font-size: 9px;
+        line-height: 1.15;
+      }
+
+      .highScoreList .rankRow {
+        padding: 2px 0;
+      }
+
+      .highScoreCard button {
+        margin-top: 7px;
+        padding: 5px 14px;
+      }
+    }
+
+
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <div class="gameTitle">最速降下曲線ゲーム</div>
+
+    <div id="modeOverlay" class="modeOverlay">
+      <div class="modeCard">
+        <div class="modeKicker">MODE SELECT</div>
+        <div class="modeTitle">最速降下曲線ゲーム</div>
+        <div class="modeGrid">
+          <button id="normalModeBtn" class="modeButton" type="button">
+            <span>NORMAL</span>
+            <small>1問ずつ自由に遊ぶ</small>
+          </button>
+          <button id="challengeModeBtn" class="modeButton challenge" type="button">
+            <span>CHALLENGE</span>
+            <small>ランダム5問でスコアアタック</small>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <section class="game">
+      <div class="canvasBox">
+        <canvas id="canvas" width="1000" height="620"></canvas>
+        <div id="scoreOverlay" class="scoreOverlay">
+          <div class="scoreCard">
+            <div class="scoreLabel" id="scoreLabel">SCORE</div>
+            <div class="scoreNumber" id="scoreBig">0</div>
+            <div class="scoreSub" id="scoreSub">結果</div>
+            <div class="scoreDetails" id="scoreDetails"></div>
+            <div id="scoreSubmitArea" class="scoreSubmitArea hidden">
+              <div class="nameRow">
+                <input id="playerNameInput" maxlength="24" autocomplete="name" placeholder="名前を入力">
+                <button id="submitScoreBtn" type="button">ハイスコア登録</button>
+              </div>
+              <div id="submitStatus" class="submitStatus"></div>
+            </div>
+            <div class="resultActions">
+              <button id="replayBtn" type="button">もう一度運動を見る</button>
+              <button id="tryAgainBtn" class="secondary" type="button">別の曲線を試す</button>
+              <button id="newLayoutBtn" class="secondary" type="button">別の配置を試す</button>
+            </div>
+          </div>
+        </div>
+<div id="highScoreOverlay" class="highScoreOverlay hidden">
+      <div class="highScoreCard">
+        <div class="highScoreKicker">HIGH SCORES</div>
+        <div id="myRankLine" class="myRankLine"></div>
+        <div id="highScoreList" class="highScoreList"></div>
+        <button id="closeHighScoreBtn" type="button">閉じる</button>
+      </div>
+    </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    "use strict";
+
+    const canvas = document.getElementById("canvas");
+    const ctx = canvas.getContext("2d");
+    const replayBtn = document.getElementById("replayBtn");
+    const tryAgainBtn = document.getElementById("tryAgainBtn");
+    const newLayoutBtn = document.getElementById("newLayoutBtn");
+    const modeOverlay = document.getElementById("modeOverlay");
+    const normalModeBtn = document.getElementById("normalModeBtn");
+    const challengeModeBtn = document.getElementById("challengeModeBtn");
+
+    const scoreOverlay = document.getElementById("scoreOverlay");
+    const scoreLabelEl = document.getElementById("scoreLabel");
+    const scoreBigEl = document.getElementById("scoreBig");
+    const scoreSubEl = document.getElementById("scoreSub");
+    const scoreDetailsEl = document.getElementById("scoreDetails");
+    const scoreSubmitArea = document.getElementById("scoreSubmitArea");
+    const playerNameInput = document.getElementById("playerNameInput");
+    const submitScoreBtn = document.getElementById("submitScoreBtn");
+    const submitStatus = document.getElementById("submitStatus");
+    const highScoreOverlay = document.getElementById("highScoreOverlay");
+    const highScoreList = document.getElementById("highScoreList");
+    const myRankLine = document.getElementById("myRankLine");
+    const closeHighScoreBtn = document.getElementById("closeHighScoreBtn");
+
+    // Google Apps ScriptのウェブアプリURLをここに入れてください。
+    // 例: const SCORE_API_URL = "https://script.google.com/macros/s/xxxxxxxx/exec";
+    const SCORE_API_URL = "https://script.google.com/macros/s/AKfycbxIlQlWOOvLSaIUz-nw3PLIDZKSEcnU1nh3f14YhQrRpJlJOQkum9_-RXsoLO0RHjUQ/exec";
+
+    function makeAttemptId() {
+      if (typeof crypto !== "undefined" && crypto.randomUUID) {
+        return crypto.randomUUID();
+      }
+
+      return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    }
+
+    const W = canvas.width;
+    const H = canvas.height;
+
+    function canvasScaleForText() {
+      const rect = canvas.getBoundingClientRect();
+      const scale = Math.min(rect.width / W, rect.height / H);
+      if (!Number.isFinite(scale) || scale <= 0) {
+        return 1;
+      }
+      return scale;
+    }
+
+    function responsiveCanvasFont(base, min, max) {
+      const scale = canvasScaleForText();
+      const adjusted = base / Math.sqrt(Math.max(0.42, Math.min(1.25, scale)));
+      return Math.max(min, Math.min(max, adjusted));
+    }
+
+    const config = {
+      startRadius: 42,
+      endRadius: 48,
+      minPointDistance: 4,
+      minForwardDx: 0.8,
+      gravity: 1400,
+      samples: 300,
+      smoothPasses: 5,
+      ballRadius: 11,
+      railOffset: 11,
+      playbackSpeed: 0.68,
+      returnToStartRadius: 28,
+      minTravelBeforeTurn: 90,
+      turnHeightEpsilon: 0.8,
+      initialUpTolerance: 2,
+      initialUpCheckDistance: 150,
+      firstStepSameHeightEpsilon: 0.25,
+      firstDescentPointCount: 3,
+      firstDescentEpsilon: 0.01,
+      stopSpeedThreshold: 0.12,
+      stopHeightEpsilon: 0.006,
+      randomMargin: 70
+    };
+
+    const A = { x: 120, y: 170 };
+
+    let B = { x: 850, y: 430 };
+
+    let isDrawing = false;
+    let rawPoints = [];
+    let playerCurve = [];
+    let bestCurve = [];
+
+    let playerSim = null;
+    let bestSim = null;
+
+    let race = {
+      running: false,
+      finished: false,
+      startStamp: null,
+      rafId: null
+    };
+
+    let draggingStop = false;
+    let activePointerId = null;
+    let resultActionsEnabledAt = 0;
+    const resultActionDelayMs = 650;
+    let scoreApiWarmupStarted = false;
+    let scoreApiWarmupDone = false;
+
+    const gameMode = {
+      current: "start",
+      challengeStage: 0,
+      challengeTotalStages: 5,
+      challengeScores: [],
+      stageJustFinished: false,
+      lastChallengeTotal: 0,
+      lastChallengePayload: null,
+      challengeAttemptId: "",
+      scoreSubmitted: false
+    };
+
+    function setHint(text) {}
+
+    function hideScoreOverlay() {
+      scoreOverlay.classList.remove("show");
+      scoreSubmitArea.classList.add("hidden");
+      highScoreOverlay.classList.add("hidden");
+      resultActionsEnabledAt = 0;
+      setResultActionButtonsEnabled(false);
+    }
+
+    function enterNormalMode() {
+      gameMode.current = "normal";
+      gameMode.challengeStage = 0;
+      gameMode.challengeScores = [];
+      gameMode.stageJustFinished = false;
+      gameMode.lastChallengePayload = null;
+      gameMode.challengeAttemptId = "";
+      gameMode.scoreSubmitted = false;
+      scoreApiWarmupStarted = false;
+      scoreApiWarmupDone = false;
+      modeOverlay.classList.add("hidden");
+      configureResultButtons("normal");
+      resetGame();
+    }
+
+    function enterChallengeMode() {
+      gameMode.current = "challenge";
+      gameMode.challengeStage = 1;
+      gameMode.challengeScores = [];
+      gameMode.stageJustFinished = false;
+      gameMode.lastChallengePayload = null;
+      gameMode.challengeAttemptId = makeAttemptId();
+      gameMode.scoreSubmitted = false;
+      scoreApiWarmupStarted = false;
+      scoreApiWarmupDone = false;
+      modeOverlay.classList.add("hidden");
+      configureResultButtons("challengePlaying");
+      B = randomStopPosition();
+      resetGame();
+    }
+
+    function returnToModeSelect() {
+      if (isDrawing || draggingStop || race.running) {
+        return;
+      }
+
+      stopRace();
+      hideScoreOverlay();
+      gameMode.current = "start";
+      gameMode.challengeStage = 0;
+      gameMode.challengeScores = [];
+      gameMode.stageJustFinished = false;
+      gameMode.lastChallengePayload = null;
+      gameMode.challengeAttemptId = "";
+      gameMode.scoreSubmitted = false;
+      scoreApiWarmupStarted = false;
+      scoreApiWarmupDone = false;
+      modeOverlay.classList.remove("hidden");
+      configureResultButtons("normal");
+      resetGame();
+    }
+
+    function configureResultButtons(mode) {
+      if (mode === "challengePlaying") {
+        replayBtn.textContent = "もう一度運動を見る";
+        tryAgainBtn.textContent = "次のステージへ";
+        newLayoutBtn.textContent = "モード選択へ";
+        return;
+      }
+
+      if (mode === "challengeComplete") {
+        replayBtn.textContent = "最後の運動を見る";
+        tryAgainBtn.textContent = "もう一度チャレンジ";
+        newLayoutBtn.textContent = "モード選択へ";
+        return;
+      }
+
+      replayBtn.textContent = "もう一度運動を見る";
+      tryAgainBtn.textContent = "別の曲線を試す";
+      newLayoutBtn.textContent = "モード選択へ";
+    }
+
+    function currentStageLabel() {
+      if (gameMode.current !== "challenge") {
+        return "";
+      }
+
+      return `STAGE ${gameMode.challengeStage} / ${gameMode.challengeTotalStages}`;
+    }
+
+    function challengeDetails(extraLines = []) {
+      const scores = gameMode.challengeScores;
+      const total = scores.reduce((sum, value) => sum + value, 0);
+      const scoreLine = `TOTAL SCORE: ${total.toFixed(1)} / ${gameMode.challengeTotalStages * 100}`;
+      const stageLines = scores.map((score, index) => `STAGE ${index + 1}: ${score.toFixed(1)}`);
+      return [scoreLine, ...stageLines, ...extraLines].join("<br>");
+    }
+
+    function setResultActionButtonsEnabled(enabled) {
+      replayBtn.disabled = !enabled;
+      tryAgainBtn.disabled = !enabled;
+      newLayoutBtn.disabled = !enabled;
+    }
+
+    function resultActionsAreReady() {
+      return (
+        scoreOverlay.classList.contains("show") &&
+        !isDrawing &&
+        !draggingStop &&
+        !race.running &&
+        highScoreOverlay.classList.contains("hidden") &&
+        Date.now() >= resultActionsEnabledAt
+      );
+    }
+
+    function armResultActionsAfterOverlay() {
+      setResultActionButtonsEnabled(false);
+      resultActionsEnabledAt = Date.now() + resultActionDelayMs;
+
+      window.setTimeout(() => {
+        if (scoreOverlay.classList.contains("show")) {
+          setResultActionButtonsEnabled(true);
+        }
+      }, resultActionDelayMs);
+    }
+
+    function capturePointer(e) {
+      activePointerId = e.pointerId;
+
+      try {
+        canvas.setPointerCapture(e.pointerId);
+      } catch (err) {
+        // Some browsers may refuse capture in edge cases; the id guard still helps.
+      }
+    }
+
+    function releasePointer(e) {
+      if (activePointerId !== e.pointerId) {
+        return;
+      }
+
+      try {
+        if (canvas.hasPointerCapture(e.pointerId)) {
+          canvas.releasePointerCapture(e.pointerId);
+        }
+      } catch (err) {}
+
+      activePointerId = null;
+    }
+
+    function isActivePointer(e) {
+      return activePointerId === null || activePointerId === e.pointerId;
+    }
+
+    function showScoreSubmitArea(visible) {
+      scoreSubmitArea.classList.toggle("hidden", !visible);
+
+      if (!visible) {
+        submitStatus.textContent = "";
+        return;
+      }
+
+      if (!playerNameInput.value.trim()) {
+        playerNameInput.value = localStorage.getItem("brachistoPlayerName") || "";
+      }
+
+      submitScoreBtn.disabled = gameMode.scoreSubmitted;
+      submitStatus.textContent = gameMode.scoreSubmitted
+        ? "このチャレンジ結果は登録済みです。"
+        : (SCORE_API_URL
+          ? "名前を入れてハイスコア登録できます。"
+          : "Apps Script URLをHTML内の SCORE_API_URL に入れると登録できます。");
+      // Ranking is shown only in the separate high-score window.
+    }
+
+    function sanitizeName(name) {
+      const cleaned = String(name || "").trim().replace(/[<>]/g, "");
+      return cleaned.slice(0, 24) || "NO NAME";
+    }
+
+    function renderRanking(result) {
+      const topScores = Array.isArray(result?.topScores)
+        ? result.topScores
+        : (Array.isArray(result) ? result : []);
+
+      const myRank = result?.myRank || null;
+
+      if (myRank && Number.isFinite(Number(myRank.rank))) {
+        const total = Number.isFinite(Number(myRank.total)) ? Number(myRank.total) : 100;
+        myRankLine.textContent = `あなたの順位: 最新${total}トライアル中 ${Number(myRank.rank)} 位`;
+      } else if (gameMode.lastChallengePayload) {
+        myRankLine.textContent = "あなたの順位: 集計対象外";
+      } else {
+        myRankLine.textContent = "";
+      }
+
+      if (!topScores.length) {
+        highScoreList.innerHTML = '<div class="submitStatus">ハイスコアはまだありません。</div>';
+        return;
+      }
+
+      highScoreList.innerHTML = topScores.slice(0, 10).map((row, index) => {
+        const name = sanitizeName(row.name);
+        const score = Number(row.score);
+        const shownScore = Number.isFinite(score) ? score.toFixed(1) : "0.0";
+        return `
+          <div class="rankRow">
+            <span>${index + 1}</span>
+            <span>${name}</span>
+            <span class="rankScore">${shownScore}</span>
+          </div>
+        `;
+      }).join("");
+    }
+
+    function jsonpRequest(params) {
+      return new Promise((resolve, reject) => {
+        if (!SCORE_API_URL) {
+          reject(new Error("SCORE_API_URLが未設定です。"));
+          return;
+        }
+
+        const callbackName = `scoreCallback_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+        const script = document.createElement("script");
+        const timeoutId = window.setTimeout(() => {
+          cleanup();
+          reject(new Error("Apps Scriptから応答がありません。"));
+        }, 15000);
+
+        function cleanup() {
+          window.clearTimeout(timeoutId);
+          delete window[callbackName];
+          script.remove();
+        }
+
+        window[callbackName] = (data) => {
+          cleanup();
+          resolve(data);
+        };
+
+        const url = new URL(SCORE_API_URL);
+        url.searchParams.set("callback", callbackName);
+        url.searchParams.set("_", String(Date.now()));
+
+        Object.entries(params || {}).forEach(([key, value]) => {
+          if (value !== undefined && value !== null) {
+            url.searchParams.set(key, String(value));
+          }
+        });
+
+        script.onerror = () => {
+          cleanup();
+          reject(new Error("Apps Scriptを読み込めませんでした。URLや公開設定を確認してください。"));
+        };
+
+        script.src = url.toString();
+        document.body.appendChild(script);
+      });
+    }
+
+    function warmupScoreApi() {
+      if (!SCORE_API_URL || scoreApiWarmupStarted) {
+        return;
+      }
+
+      scoreApiWarmupStarted = true;
+      scoreApiWarmupDone = false;
+
+      jsonpRequest({
+        action: "ranking",
+        warmup: "1"
+      })
+        .then(() => {
+          scoreApiWarmupDone = true;
+        })
+        .catch(() => {
+          scoreApiWarmupStarted = false;
+          scoreApiWarmupDone = false;
+        });
+    }
+
+    async function loadRanking() {
+      const attemptId = gameMode.lastChallengePayload?.attemptId || "";
+      const data = await jsonpRequest({
+        action: "ranking",
+        attemptId
+      });
+
+      if (!data.ok) {
+        throw new Error(data.error || "ランキング取得に失敗しました。");
+      }
+
+      renderRanking(data);
+      return data;
+    }
+
+    function showHighScoreWindow() {
+      highScoreOverlay.classList.remove("hidden");
+    }
+
+    function closeHighScoreWindow() {
+      highScoreOverlay.classList.add("hidden");
+    }
+
+    async function submitChallengeScore() {
+      if (gameMode.scoreSubmitted) {
+        submitStatus.textContent = "このチャレンジ結果はすでに登録済みです。";
+        submitScoreBtn.disabled = true;
+        return;
+      }
+
+      if (!gameMode.lastChallengePayload) {
+        submitStatus.textContent = "登録するスコアがありません。";
+        return;
+      }
+
+      if (!SCORE_API_URL) {
+        submitStatus.textContent = "先にHTML内の SCORE_API_URL にApps Script URLを入れてください。";
+        return;
+      }
+
+      const name = sanitizeName(playerNameInput.value);
+      localStorage.setItem("brachistoPlayerName", name);
+
+      const payload = {
+        ...gameMode.lastChallengePayload,
+        name,
+        userAgent: navigator.userAgent
+      };
+
+      submitScoreBtn.disabled = true;
+      submitStatus.textContent = scoreApiWarmupDone ? "送信中..." : "送信中...";
+
+      try {
+        const data = await jsonpRequest({
+          action: "submit",
+          attemptId: payload.attemptId,
+          name: payload.name,
+          score: payload.score,
+          stages: JSON.stringify(payload.stages),
+          userAgent: payload.userAgent
+        });
+
+        if (!data.ok) {
+          throw new Error(data.error || "登録に失敗しました。");
+        }
+
+        gameMode.scoreSubmitted = true;
+        submitScoreBtn.disabled = true;
+        submitStatus.textContent = "登録しました。ハイスコアを表示します。";
+        renderRanking(data);
+        showHighScoreWindow();
+        submitStatus.textContent = "登録完了。この結果は再登録できません。";
+      } catch (error) {
+        submitStatus.textContent = `エラー: ${error.message}`;
+        submitScoreBtn.disabled = false;
+      }
+    }
+
+    function showScoreOverlay(result) {
+      scoreLabelEl.textContent = result.label;
+      scoreBigEl.textContent = result.scoreText;
+      scoreSubEl.textContent = result.subtitle;
+      scoreDetailsEl.innerHTML = result.details;
+      showScoreSubmitArea(Boolean(result.submitScore));
+      scoreOverlay.classList.remove("show");
+      void scoreOverlay.offsetWidth;
+      scoreOverlay.classList.add("show");
+      armResultActionsAfterOverlay();
+
+      if (result.submitScore) {
+        warmupScoreApi();
+        setTimeout(() => playerNameInput.focus(), 80);
+      }
+    }
+
+    closeHighScoreBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      closeHighScoreWindow();
+    });
+
+    submitScoreBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      submitChallengeScore();
+    });
+
+    playerNameInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.stopPropagation();
+        submitChallengeScore();
+      }
+    });
+
+    normalModeBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      enterNormalMode();
+    });
+
+    challengeModeBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      enterChallengeMode();
+    });
+
+    replayBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      if (!resultActionsAreReady()) return;
+
+      hideScoreOverlay();
+      if (playerSim && bestSim) {
+        startRace();
+      }
+    });
+
+    tryAgainBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      if (!resultActionsAreReady()) return;
+
+      if (gameMode.current === "challenge") {
+        if (gameMode.challengeStage >= gameMode.challengeTotalStages) {
+          enterChallengeMode();
+          return;
+        }
+
+        gameMode.challengeStage += 1;
+        gameMode.stageJustFinished = false;
+        B = randomStopPosition();
+        resetGame();
+        return;
+      }
+
+      resetForNewCurve();
+    });
+
+    newLayoutBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      if (!resultActionsAreReady()) return;
+
+      if (gameMode.current === "challenge" || gameMode.current === "normal") {
+        returnToModeSelect();
+        return;
+      }
+
+      randomLevel();
+    });
+
+    function dist(a, b) {
+      return Math.hypot(a.x - b.x, a.y - b.y);
+    }
+
+    function rand(min, max) {
+      return min + Math.random() * (max - min);
+    }
+
+    function pointerPosition(e) {
+      const rect = canvas.getBoundingClientRect();
+      return {
+        x: (e.clientX - rect.left) * (canvas.width / rect.width),
+        y: (e.clientY - rect.top) * (canvas.height / rect.height)
+      };
+    }
+
+    function stopRace() {
+      if (race.rafId !== null) {
+        cancelAnimationFrame(race.rafId);
+      }
+
+      race.running = false;
+      race.startStamp = null;
+      race.rafId = null;
+    }
+
+    function resetGame() {
+      stopRace();
+      hideScoreOverlay();
+
+      isDrawing = false;
+      rawPoints = [];
+      playerCurve = [];
+      playerSim = null;
+
+      bestCurve = makeCycloid(A, B);
+      bestSim = simulateCurve(bestCurve, { detectTurnAndReturn: false });
+
+      race.finished = false;
+
+      setHint("");
+      drawScene();
+    }
+
+    function resetForNewCurve() {
+      stopRace();
+      hideScoreOverlay();
+
+      isDrawing = false;
+      rawPoints = [];
+      playerCurve = [];
+      playerSim = null;
+      race.finished = false;
+
+      setHint("");
+      drawScene();
+    }
+
+    function randomLevel() {
+      stopRace();
+      hideScoreOverlay();
+
+      B = randomStopPosition();
+      resetGame();
+    }
+
+    function randomStopPosition() {
+      const margin = config.randomMargin;
+      return {
+        x: rand(A.x + 360, W - margin),
+        y: rand(A.y + 80, H - margin)
+      };
+    }
+
+    function clampStopPosition(p) {
+      return {
+        x: Math.max(A.x + 280, Math.min(W - config.randomMargin, p.x)),
+        y: Math.max(A.y + 55, Math.min(H - config.randomMargin, p.y))
+      };
+    }
+
+    canvas.addEventListener("pointerdown", (e) => {
+      if (
+        gameMode.current === "start" ||
+        race.running ||
+        scoreOverlay.classList.contains("show") ||
+        activePointerId !== null
+      ) {
+        return;
+      }
+
+      const p = pointerPosition(e);
+
+      if (gameMode.current !== "challenge" && dist(p, B) <= config.endRadius) {
+        stopRace();
+        hideScoreOverlay();
+        capturePointer(e);
+        draggingStop = true;
+        rawPoints = [];
+        playerCurve = [];
+        playerSim = null;
+        drawScene();
+        return;
+      }
+
+      if (dist(p, A) > config.startRadius) {
+        return;
+      }
+
+      stopRace();
+      hideScoreOverlay();
+      race.finished = false;
+
+      capturePointer(e);
+      isDrawing = true;
+      rawPoints = [{ ...A }];
+      playerCurve = [];
+      playerSim = null;
+
+      drawScene();
+    });
+
+    canvas.addEventListener("pointermove", (e) => {
+      if (!isActivePointer(e)) return;
+
+      if (draggingStop) {
+        B = clampStopPosition(pointerPosition(e));
+        bestCurve = makeCycloid(A, B);
+        bestSim = simulateCurve(bestCurve, { detectTurnAndReturn: false });
+        drawScene();
+        return;
+      }
+
+      if (!isDrawing) return;
+
+      const pointer = pointerPosition(e);
+      const last = rawPoints[rawPoints.length - 1];
+      const dx = pointer.x - last.x;
+
+      if (dx < config.minForwardDx) {
+        return;
+      }
+
+      const p = {
+        x: Math.min(pointer.x, B.x),
+        y: pointer.y
+      };
+
+      const earlyDistance = p.x - A.x;
+      if (
+        earlyDistance <= config.initialUpCheckDistance &&
+        p.y < A.y - config.initialUpTolerance
+      ) {
+        cancelDrawing("");
+        return;
+      }
+
+      if (dist(p, last) < config.minPointDistance) {
+        return;
+      }
+
+      const candidatePoints = rawPoints.concat([p]);
+      if (hasBadInitialDescent(candidatePoints)) {
+        cancelDrawing("");
+        return;
+      }
+
+      rawPoints.push(p);
+      drawScene();
+    });
+
+    canvas.addEventListener("pointerup", (e) => {
+      if (!isActivePointer(e)) return;
+
+      if (draggingStop) {
+        draggingStop = false;
+        B = clampStopPosition(pointerPosition(e));
+        bestCurve = makeCycloid(A, B);
+        bestSim = simulateCurve(bestCurve, { detectTurnAndReturn: false });
+        releasePointer(e);
+        drawScene();
+        return;
+      }
+
+      if (!isDrawing) {
+        releasePointer(e);
+        return;
+      }
+
+      isDrawing = false;
+
+      const p = pointerPosition(e);
+
+      if (dist(p, B) > config.endRadius) {
+        releasePointer(e);
+        cancelDrawing("GOALの円の中で離してください。");
+        return;
+      }
+
+      rawPoints.push({ ...B });
+
+      const prepared = preparePlayerCurve(rawPoints);
+
+      if (!prepared.ok) {
+        releasePointer(e);
+        cancelDrawing(prepared.reason);
+        return;
+      }
+
+      playerCurve = prepared.curve;
+      playerSim = simulateCurve(playerCurve, { detectTurnAndReturn: true });
+
+      if (!playerSim.ok) {
+        releasePointer(e);
+        playerCurve = [];
+        playerSim = null;
+        setHint(playerSim.reason);
+        drawScene();
+        return;
+      }
+
+      if (!bestSim || !bestSim.ok) {
+        bestCurve = makeCycloid(A, B);
+        bestSim = simulateCurve(bestCurve, { detectTurnAndReturn: false });
+      }
+
+      setHint("レース中！");
+      releasePointer(e);
+      drawScene();
+      startRace();
+    });
+
+    canvas.addEventListener("pointercancel", (e) => {
+      if (!isActivePointer(e)) return;
+
+      if (draggingStop) {
+        draggingStop = false;
+        releasePointer(e);
+        drawScene();
+        return;
+      }
+
+      if (isDrawing) {
+        releasePointer(e);
+        cancelDrawing("");
+        return;
+      }
+
+      releasePointer(e);
+    });
+
+    function cancelDrawing(reason) {
+      hideScoreOverlay();
+
+      activePointerId = null;
+      isDrawing = false;
+      rawPoints = [];
+      playerCurve = [];
+      playerSim = null;
+
+      race.finished = false;
+
+      setHint(reason);
+      drawScene();
+    }
+
+    
+
+    function preparePlayerCurve(points) {
+      if (points.length < 5) {
+        return { ok: false, reason: "線が短すぎます。" };
+      }
+
+      if (startsByGoingUp(points)) {
+        return {
+          ok: false,
+          reason: "最初に上へ向かったのでキャンセル。STARTから下向きに描き始めてください。"
+        };
+      }
+
+      const cleaned = enforceStrictlyIncreasingX(points);
+      const sampled = resampleByX(cleaned, config.samples);
+      const smoothed = smoothY(sampled, config.smoothPasses);
+
+      smoothed[0] = { ...A };
+      smoothed[smoothed.length - 1] = { ...B };
+
+      return { ok: true, curve: smoothed };
+    }
+
+    function hasBadInitialDescent(points) {
+      if (!points || points.length < config.firstDescentPointCount) {
+        return false;
+      }
+
+      const count = Math.min(config.firstDescentPointCount, points.length);
+
+      for (let i = 1; i < count; i++) {
+        const previous = points[i - 1];
+        const current = points[i];
+
+        if (current.y <= previous.y + config.firstDescentEpsilon) {
+          return true;
+        }
+      }
+
+      return false;
+    }
+
+    function startsByGoingUp(points) {
+      for (const p of points) {
+        const earlyDistance = p.x - A.x;
+
+        if (earlyDistance > config.initialUpCheckDistance) {
+          return false;
+        }
+
+        if (p.y < A.y - config.initialUpTolerance) {
+          return true;
+        }
+      }
+
+      return false;
+    }
+
+    function enforceStrictlyIncreasingX(points) {
+      const out = [];
+      let lastX = points[0].x;
+
+      for (const p of points) {
+        const next = { ...p };
+
+        if (out.length > 0 && next.x <= lastX) {
+          continue;
+        }
+
+        out.push(next);
+        lastX = next.x;
+      }
+
+      if (dist(out[out.length - 1], B) > 0.001) {
+        out.push({ ...B });
+      }
+
+      return out;
+    }
+
+    function resampleByX(points, n) {
+      const out = [];
+      const x0 = points[0].x;
+      const x1 = points[points.length - 1].x;
+      let j = 0;
+
+      for (let i = 0; i < n; i++) {
+        const x = x0 + (x1 - x0) * i / (n - 1);
+
+        while (j < points.length - 2 && points[j + 1].x < x) {
+          j++;
+        }
+
+        const p = points[j];
+        const q = points[j + 1];
+
+        const dx = q.x - p.x;
+        const t = Math.abs(dx) < 1e-9 ? 0 : (x - p.x) / dx;
+        const y = p.y + (q.y - p.y) * t;
+
+        out.push({ x, y });
+      }
+
+      return out;
+    }
+
+    function smoothY(points, passes) {
+      let arr = points.map((p) => ({ ...p }));
+
+      for (let pass = 0; pass < passes; pass++) {
+        const next = arr.map((p) => ({ ...p }));
+
+        for (let i = 1; i < arr.length - 1; i++) {
+          next[i].y =
+            0.22 * arr[i - 1].y +
+            0.56 * arr[i].y +
+            0.22 * arr[i + 1].y;
+        }
+
+        arr = next;
+      }
+
+      return arr;
+    }
+
+    function simulateCurve(points, options = {}) {
+      const detectTurnAndReturn = options.detectTurnAndReturn ?? true;
+
+      if (!points || points.length < 2) {
+        return { ok: false, reason: "曲線データが足りません。" };
+      }
+
+      const timeline = [{ t: 0, x: points[0].x, y: points[0].y }];
+      let time = 0;
+      let traveled = 0;
+      let maxDrop = 0;
+      let wasClimbingAfterDrop = false;
+
+      for (let i = 0; i < points.length - 1; i++) {
+        const p = points[i];
+        const q = points[i + 1];
+
+        const h1 = p.y - points[0].y;
+        const h2 = q.y - points[0].y;
+
+        maxDrop = Math.max(maxDrop, h1, h2);
+
+        if (maxDrop > config.minTravelBeforeTurn * 0.12 && h2 < h1) {
+          wasClimbingAfterDrop = true;
+        }
+
+        const reachesNearZeroSpeed =
+          detectTurnAndReturn &&
+          wasClimbingAfterDrop &&
+          traveled > config.minTravelBeforeTurn &&
+          h1 > config.turnHeightEpsilon &&
+          h2 <= config.turnHeightEpsilon;
+
+        if (reachesNearZeroSpeed) {
+          const turnPoint = interpolateAtHeight(p, q, points[0].y + config.turnHeightEpsilon);
+          const forwardTimeline = appendPartialSegmentByPoint(timeline, p, turnPoint, h1);
+          const returnTimeline = buildReturnTimelineToStart(forwardTimeline);
+
+          return {
+            ok: true,
+            completed: false,
+            returnedToStart: true,
+            turnedBack: true,
+            time: returnTimeline[returnTimeline.length - 1].t,
+            timeline: returnTimeline,
+            turnPoint,
+            returnPoint: { ...A },
+            reason: "RETURNED TO START"
+          };
+        }
+
+        const effectiveH1 = Math.max(0, h1);
+        const effectiveH2 = Math.max(0, h2);
+
+        const v1 = Math.sqrt(2 * config.gravity * effectiveH1);
+        const v2 = Math.sqrt(2 * config.gravity * effectiveH2);
+
+        const ds = Math.hypot(q.x - p.x, q.y - p.y);
+        const rawVAvg = (v1 + v2) / 2;
+
+        // If the ball reaches a flat/same-height pocket with essentially no speed,
+        // the physical motion cannot progress. Treat it as a failed path instead of
+        // letting the artificial minimum speed creep through the segment.
+        if (
+          detectTurnAndReturn &&
+          traveled > config.minTravelBeforeTurn &&
+          ds > 0.5 &&
+          rawVAvg <= config.stopSpeedThreshold &&
+          Math.max(effectiveH1, effectiveH2) <= config.stopHeightEpsilon
+        ) {
+          return {
+            ok: true,
+            completed: false,
+            returnedToStart: false,
+            turnedBack: false,
+            stopped: true,
+            time,
+            timeline,
+            stopPoint: { ...p },
+            reason: "STOPPED"
+          };
+        }
+
+        const vAvg = Math.max(0.08, rawVAvg);
+        const dt = ds / vAvg;
+
+        if (!Number.isFinite(dt)) {
+          return {
+            ok: false,
+            reason: "到達時間の計算に失敗しました。"
+          };
+        }
+
+        time += dt;
+        traveled += ds;
+
+        if (time > 120) {
+          const returnTimeline = buildReturnTimelineToStart(timeline);
+
+          return {
+            ok: true,
+            completed: false,
+            returnedToStart: true,
+            turnedBack: true,
+            time: returnTimeline[returnTimeline.length - 1].t,
+            timeline: returnTimeline,
+            turnPoint: { ...p },
+            returnPoint: { ...A },
+            reason: "RETURNED TO START"
+          };
+        }
+
+        timeline.push({
+          t: time,
+          x: q.x,
+          y: q.y
+        });
+      }
+
+      return {
+        ok: true,
+        completed: true,
+        returnedToStart: false,
+        turnedBack: false,
+        time,
+        timeline
+      };
+    }
+
+    function interpolateAtHeight(p, q, y) {
+      const dy = q.y - p.y;
+
+      if (Math.abs(dy) < 1e-9) {
+        return { ...q };
+      }
+
+      const u = Math.max(0, Math.min(1, (y - p.y) / dy));
+
+      return {
+        x: p.x + (q.x - p.x) * u,
+        y: p.y + (q.y - p.y) * u
+      };
+    }
+
+    function appendPartialSegmentByPoint(timeline, p, endPoint, h1) {
+      const next = timeline.slice();
+      const last = next[next.length - 1];
+
+      const v1 = Math.sqrt(Math.max(0, 2 * config.gravity * h1));
+      const ds = Math.hypot(endPoint.x - p.x, endPoint.y - p.y);
+      const dt = ds / Math.max(0.08, v1 / 2);
+
+      next.push({
+        t: last.t + dt,
+        x: endPoint.x,
+        y: endPoint.y
+      });
+
+      return next;
+    }
+
+    function buildReturnTimelineToStart(forwardTimeline) {
+      const out = forwardTimeline.map((p) => ({ ...p }));
+      let currentTime = out[out.length - 1].t;
+
+      for (let i = forwardTimeline.length - 2; i >= 0; i--) {
+        const nextPoint = forwardTimeline[i];
+        const fromPoint = forwardTimeline[i + 1];
+        const dt = Math.max(0.004, fromPoint.t - nextPoint.t);
+
+        currentTime += dt;
+
+        out.push({
+          t: currentTime,
+          x: nextPoint.x,
+          y: nextPoint.y
+        });
+
+        if (dist(nextPoint, A) <= config.returnToStartRadius || i === 0) {
+          out[out.length - 1] = {
+            t: currentTime,
+            x: A.x,
+            y: A.y
+          };
+          break;
+        }
+      }
+
+      return out;
+    }
+
+    function makeCycloid(start, end) {
+      const X = end.x - start.x;
+      const Y = end.y - start.y;
+
+      if (X <= 0 || Y <= 0) {
+        return [
+          { ...start },
+          { ...end }
+        ];
+      }
+
+      const target = X / Y;
+
+      function ratio(theta) {
+        return (theta - Math.sin(theta)) / (1 - Math.cos(theta));
+      }
+
+      let lo = 1e-6;
+      let hi = Math.PI * 2 - 1e-6;
+
+      for (let i = 0; i < 90; i++) {
+        const mid = (lo + hi) / 2;
+
+        if (ratio(mid) < target) {
+          lo = mid;
+        } else {
+          hi = mid;
+        }
+      }
+
+      const thetaEnd = (lo + hi) / 2;
+      const a = Y / (1 - Math.cos(thetaEnd));
+      const pts = [];
+
+      for (let i = 0; i < config.samples; i++) {
+        const theta = thetaEnd * i / (config.samples - 1);
+        pts.push({
+          x: start.x + a * (theta - Math.sin(theta)),
+          y: start.y + a * (1 - Math.cos(theta))
+        });
+      }
+
+      pts[0] = { ...start };
+      pts[pts.length - 1] = { ...end };
+      return pts;
+    }
+
+    function startRace() {
+      stopRace();
+
+      if (!playerSim || !bestSim) return;
+
+      race.running = true;
+      race.finished = false;
+      race.startStamp = null;
+
+      setHint("レース中！");
+      race.rafId = requestAnimationFrame(raceFrame);
+    }
+
+    function raceFrame(stamp) {
+      if (!race.running || !playerSim || !bestSim) {
+        return;
+      }
+
+      if (race.startStamp === null) {
+        race.startStamp = stamp;
+      }
+
+      const t = ((stamp - race.startStamp) / 1000) * config.playbackSpeed;
+      const playerEnd = playerSim.timeline[playerSim.timeline.length - 1].t;
+      const bestEnd = bestSim.timeline[bestSim.timeline.length - 1].t;
+      const total = Math.max(playerEnd, bestEnd);
+      const clampedT = Math.min(t, total);
+
+      const playerPos = sampleTimeline(playerSim.timeline, Math.min(clampedT, playerEnd));
+      const bestPos = sampleTimeline(bestSim.timeline, Math.min(clampedT, bestEnd));
+
+      drawScene({
+        showBestCurve: true,
+        showRails: true,
+        playerBall: playerPos,
+        bestBall: bestPos,
+        showReturnMark: false,
+        showTurnMark: false
+      });
+
+      if (t < total) {
+        race.rafId = requestAnimationFrame(raceFrame);
+        return;
+      }
+
+      finishRace();
+    }
+
+    function finishRace() {
+      race.running = false;
+      race.finished = true;
+      race.startStamp = null;
+      race.rafId = null;
+
+      const playerEnd = playerSim.timeline[playerSim.timeline.length - 1].t;
+      const bestEnd = bestSim.timeline[bestSim.timeline.length - 1].t;
+
+      drawScene({
+        showBestCurve: true,
+        showRails: true,
+        playerBall: sampleTimeline(playerSim.timeline, playerEnd),
+        bestBall: sampleTimeline(bestSim.timeline, bestEnd),
+        showReturnMark: false,
+        showTurnMark: false
+      });
+
+      let score = 0;
+      let subtitle = "";
+      let details = "";
+
+      if (!playerSim.completed) {
+        const label = playerSim.stopped ? "STOPPED" : "RETURN";
+        subtitle = playerSim.stopped ? "BALL STOPPED" : "RETURNED TO START";
+        details = `${playerSim.reason}<br>CYCLOID: ${bestSim.time.toFixed(3)} s`;
+
+        if (gameMode.current === "challenge") {
+          if (!gameMode.stageJustFinished) {
+            gameMode.challengeScores.push(0);
+            gameMode.stageJustFinished = true;
+          }
+          configureResultButtons(
+            gameMode.challengeStage >= gameMode.challengeTotalStages
+              ? "challengeComplete"
+              : "challengePlaying"
+          );
+
+          const complete = gameMode.challengeStage >= gameMode.challengeTotalStages;
+          const total = gameMode.challengeScores.reduce((sum, value) => sum + value, 0);
+
+          if (complete && !gameMode.lastChallengePayload) {
+            gameMode.lastChallengeTotal = total;
+            gameMode.lastChallengePayload = {
+              attemptId: gameMode.challengeAttemptId || makeAttemptId(),
+              mode: "challenge",
+              score: Number(total.toFixed(1)),
+              stages: gameMode.challengeScores.map((value) => Number(value.toFixed(1))),
+              createdAt: new Date().toISOString()
+            };
+            gameMode.scoreSubmitted = false;
+          }
+
+          showScoreOverlay({
+            label: complete ? "COMPLETE" : `${currentStageLabel()} ${label}`,
+            scoreText: complete ? total.toFixed(1) : "0",
+            subtitle: complete ? "CHALLENGE COMPLETE" : subtitle,
+            details: challengeDetails([details]),
+            submitScore: complete
+          });
+          return;
+        }
+
+        setHint("");
+        showScoreOverlay({
+          label,
+          scoreText: "0",
+          subtitle,
+          details
+        });
+        return;
+      }
+
+      score = Math.max(0, Math.min(100, 100 * bestSim.time / playerSim.time));
+      const diff = playerSim.time - bestSim.time;
+
+      if (score >= 99) {
+        subtitle = "NEAR PERFECT";
+      } else if (score >= 97.5) {
+        subtitle = "SO CLOSE";
+      } else if (score >= 92) {
+        subtitle = "GREAT";
+      } else if (score >= 80) {
+        subtitle = "GOOD";
+      } else {
+        subtitle = "TRY AGAIN";
+      }
+
+      details =
+        `PATH: ${playerSim.time.toFixed(3)} s<br>` +
+        `CYCLOID: ${bestSim.time.toFixed(3)} s<br>` +
+        `DIFF: ${Math.max(0, diff).toFixed(3)} s`;
+
+      setHint("");
+
+      if (gameMode.current === "challenge") {
+        if (!gameMode.stageJustFinished) {
+          gameMode.challengeScores.push(score);
+          gameMode.stageJustFinished = true;
+        }
+
+        const complete = gameMode.challengeStage >= gameMode.challengeTotalStages;
+        configureResultButtons(complete ? "challengeComplete" : "challengePlaying");
+
+        const total = gameMode.challengeScores.reduce((sum, value) => sum + value, 0);
+
+        if (complete && !gameMode.lastChallengePayload) {
+          gameMode.lastChallengeTotal = total;
+          gameMode.lastChallengePayload = {
+            attemptId: gameMode.challengeAttemptId || makeAttemptId(),
+            mode: "challenge",
+            score: Number(total.toFixed(1)),
+            stages: gameMode.challengeScores.map((value) => Number(value.toFixed(1))),
+            createdAt: new Date().toISOString()
+          };
+          gameMode.scoreSubmitted = false;
+        }
+
+        showScoreOverlay({
+          label: complete ? "COMPLETE" : currentStageLabel(),
+          scoreText: complete ? total.toFixed(1) : score.toFixed(1),
+          subtitle: complete ? "CHALLENGE COMPLETE" : subtitle,
+          details: challengeDetails([details]),
+          submitScore: complete
+        });
+        return;
+      }
+
+      showScoreOverlay({
+        label: "SCORE",
+        scoreText: score.toFixed(1),
+        subtitle,
+        details
+      });
+    }
+
+    function sampleTimeline(timeline, t) {
+      if (!timeline || timeline.length === 0) {
+        return { x: 0, y: 0 };
+      }
+
+      if (t <= 0) {
+        return {
+          x: timeline[0].x,
+          y: timeline[0].y
+        };
+      }
+
+      const last = timeline[timeline.length - 1];
+
+      if (t >= last.t) {
+        return {
+          x: last.x,
+          y: last.y
+        };
+      }
+
+      let lo = 0;
+      let hi = timeline.length - 1;
+
+      while (hi - lo > 1) {
+        const mid = Math.floor((lo + hi) / 2);
+
+        if (timeline[mid].t <= t) {
+          lo = mid;
+        } else {
+          hi = mid;
+        }
+      }
+
+      const a = timeline[lo];
+      const b = timeline[hi];
+      const u = (t - a.t) / (b.t - a.t || 1);
+
+      return {
+        x: a.x + (b.x - a.x) * u,
+        y: a.y + (b.y - a.y) * u
+      };
+    }
+
+    function drawScene(options = {}) {
+      ctx.clearRect(0, 0, W, H);
+
+      drawGuide();
+      drawStartEnd();
+      drawChallengeStatus();
+
+      const shouldShowBest = options.showBestCurve || race.running || race.finished;
+      const shouldShowRails = Boolean(options.showRails);
+
+      if (rawPoints.length > 1 && playerCurve.length === 0) {
+        drawPolyline(rawPoints, "rgba(155, 255, 189, 0.74)", 4);
+      }
+
+      if (playerCurve.length > 1) {
+        if (shouldShowRails) {
+          drawRail(playerCurve, "rgba(255,255,255,0.78)", 3);
+        }
+        drawPolyline(playerCurve, "rgba(155, 255, 189, 0.95)", 5);
+      }
+
+      if (shouldShowBest && bestCurve.length > 1) {
+        if (shouldShowRails) {
+          drawRail(bestCurve, "rgba(255,255,255,0.78)", 3);
+        }
+        drawPolyline(bestCurve, "rgba(255, 209, 102, 0.92)", 5);
+      }
+
+      if (options.bestBall) {
+        drawBall(options.bestBall, "#ffd166", "");
+      }
+
+      if (options.playerBall) {
+        drawBall(options.playerBall, "#9bffbd", "");
+      }
+
+      drawInstructionOverlay();
+    }
+
+    function drawChallengeStatus() {
+      if (gameMode.current !== "challenge" || scoreOverlay.classList.contains("show")) {
+        return;
+      }
+
+      const total = gameMode.challengeScores.reduce((sum, value) => sum + value, 0);
+
+      ctx.save();
+      ctx.textAlign = "left";
+      ctx.fillStyle = "rgba(244,247,255,0.92)";
+      ctx.font = `900 ${responsiveCanvasFont(18, 16, 26)}px system-ui, sans-serif`;
+      ctx.fillText(`STAGE ${gameMode.challengeStage} / ${gameMode.challengeTotalStages}`, 22, 36);
+
+      ctx.fillStyle = "rgba(244,247,255,0.72)";
+      ctx.font = `800 ${responsiveCanvasFont(14, 13, 20)}px system-ui, sans-serif`;
+      ctx.fillText(`TOTAL ${total.toFixed(1)}`, 22, 62);
+      ctx.restore();
+    }
+
+    function drawInstructionOverlay() {
+      if (gameMode.current === "start" || race.running || race.finished || scoreOverlay.classList.contains("show")) {
+        return;
+      }
+
+      ctx.save();
+      ctx.fillStyle = "rgba(244,247,255,0.92)";
+      const instructionSize = responsiveCanvasFont(30, 24, 40);
+      ctx.font = `900 ${instructionSize}px system-ui, sans-serif`;
+      ctx.textAlign = "center";
+      ctx.fillText("STARTとGOALを線で結ぼう", W / 2, 42);
+      ctx.restore();
+    }
+
+    function drawGuide() {
+      ctx.save();
+
+      ctx.strokeStyle = "rgba(255,255,255,0.11)";
+      ctx.lineWidth = 2;
+      ctx.setLineDash([8, 10]);
+      ctx.beginPath();
+      ctx.moveTo(A.x, A.y);
+      ctx.lineTo(B.x, B.y);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      ctx.fillStyle = "rgba(123, 215, 255, 0.08)";
+      ctx.beginPath();
+      ctx.arc(A.x, A.y, config.startRadius, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = "rgba(255, 107, 122, 0.08)";
+      ctx.beginPath();
+      ctx.arc(B.x, B.y, config.endRadius, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.restore();
+    }
+
+    function drawStartEnd() {
+      drawPoint(A, "START", "#9bffbd");
+      drawPoint(B, "GOAL", "#ff7d8b");
+    }
+
+    function drawPoint(p, label, color) {
+      ctx.save();
+
+      ctx.shadowColor = color;
+      ctx.shadowBlur = 16;
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 12, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = "#f4f7ff";
+      const labelSize = responsiveCanvasFont(18, 18, 30);
+      ctx.font = `900 ${labelSize}px system-ui, sans-serif`;
+      ctx.textAlign = "center";
+      ctx.fillText(label, p.x, p.y - 26);
+      ctx.textAlign = "start";
+
+      ctx.restore();
+    }
+
+    function offsetCurveByNormal(points, distance) {
+      if (!points || points.length < 2) {
+        return [];
+      }
+
+      return points.map((p, i) => {
+        const prev = points[Math.max(0, i - 1)];
+        const next = points[Math.min(points.length - 1, i + 1)];
+
+        const tx = next.x - prev.x;
+        const ty = next.y - prev.y;
+        const len = Math.hypot(tx, ty);
+
+        if (len < 1e-9) {
+          return { x: p.x, y: p.y + distance };
+        }
+
+        const ux = tx / len;
+        const uy = ty / len;
+
+        // Offset toward the lower side of the center path.
+        // This is perpendicular to the tangent, unlike the previous fixed vertical offset.
+        const n1 = { x: -uy, y: ux };
+        const n2 = { x: uy, y: -ux };
+        const n = n1.y >= n2.y ? n1 : n2;
+
+        return {
+          x: p.x + n.x * distance,
+          y: p.y + n.y * distance
+        };
+      });
+    }
+
+    function drawPolyline(points, color, width) {
+      if (!points || points.length < 2) return;
+
+      ctx.save();
+
+      ctx.strokeStyle = color;
+      ctx.lineWidth = width;
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+
+      ctx.beginPath();
+      ctx.moveTo(points[0].x, points[0].y);
+
+      for (let i = 1; i < points.length; i++) {
+        ctx.lineTo(points[i].x, points[i].y);
+      }
+
+      ctx.stroke();
+
+      ctx.restore();
+    }
+
+    function drawRail(points, color, width) {
+      const railPoints = offsetCurveByNormal(points, config.railOffset);
+      if (!railPoints || railPoints.length < 2) return;
+
+      ctx.save();
+
+      ctx.strokeStyle = color;
+      ctx.lineWidth = width;
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+
+      ctx.beginPath();
+      ctx.moveTo(railPoints[0].x, railPoints[0].y);
+
+      for (let i = 1; i < railPoints.length; i++) {
+        ctx.lineTo(railPoints[i].x, railPoints[i].y);
+      }
+
+      ctx.stroke();
+
+      ctx.restore();
+    }
+
+    function drawBall(p, color, label) {
+      ctx.save();
+
+      ctx.shadowColor = color;
+      ctx.shadowBlur = 18;
+      ctx.fillStyle = color;
+
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, config.ballRadius, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.shadowBlur = 0;
+      ctx.strokeStyle = "rgba(255,255,255,0.85)";
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      if (label) {
+        ctx.font = "800 13px system-ui, sans-serif";
+        ctx.fillStyle = "#f4f7ff";
+        ctx.fillText(label, p.x + 15, p.y - 11);
+      }
+
+      ctx.restore();
+    }
+
+    function drawLegend(showBest, showRails) {
+      ctx.save();
+
+      const x = 22;
+      let y = 28;
+
+      ctx.font = "14px system-ui, sans-serif";
+      ctx.fillStyle = "rgba(244,247,255,0.82)";
+      ctx.fillText("右向きに動いた分だけ線に反映", x, y);
+      y += 22;
+      ctx.fillText("最初に上へ向かったらキャンセル", x, y);
+      y += 22;
+
+      drawLegendLine(x, y + 7, "#9bffbd", "描いた曲線");
+      y += 24;
+
+      if (showBest) {
+        drawLegendLine(x, y + 7, "#ffd166", "サイクロイド");
+        y += 24;
+      }
+
+      if (showRails) {
+        drawLegendLine(x, y + 7, "#ffffff", "レース中だけ表示するレール線");
+      }
+
+      ctx.restore();
+    }
+
+    function drawLegendLine(x, y, color, text) {
+      ctx.save();
+
+      ctx.strokeStyle = color;
+      ctx.lineWidth = color === "#ffffff" ? 3 : 4;
+      ctx.lineCap = "round";
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.lineTo(x + 36, y);
+      ctx.stroke();
+
+      ctx.fillStyle = "rgba(244,247,255,0.82)";
+      ctx.font = "14px system-ui, sans-serif";
+      ctx.fillText(text, x + 46, y + 5);
+
+      ctx.restore();
+    }
+
+    resetGame();
+    modeOverlay.classList.remove("hidden");
+    gameMode.current = "start";
+  </script>
+</body>
+</html>
