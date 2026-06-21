@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>最速降下曲線ゲーム v54 fuller-window-mobile</title>
+  <title>最速降下曲線ゲーム v55 iphone-landscape-fit</title>
   <style>
     :root {
       --bg: #0b0f16;
@@ -1308,6 +1308,83 @@
     }
 
 
+  
+    /* v55: use JS visualViewport fitting for iPhone-like landscape screens. */
+    :root {
+      --fit-width: min(1280px, 99vw);
+    }
+
+    .wrap {
+      width: var(--fit-width);
+      max-width: 99.8vw;
+      padding-top: 1px;
+      padding-bottom: 0;
+    }
+
+    @media (orientation: landscape) and (max-height: 520px) {
+      body {
+        align-items: start;
+        place-items: start center;
+        padding-top: env(safe-area-inset-top, 0px);
+        box-sizing: border-box;
+      }
+
+      .wrap {
+        padding-top: 0;
+        padding-bottom: 0;
+      }
+
+      .gameTitle {
+        font-size: clamp(10px, 2.7vh, 14px);
+        line-height: 1;
+        margin: 0 0 1px;
+      }
+
+      .game {
+        border-radius: 8px;
+      }
+
+      .scoreCard {
+        top: 50%;
+        left: 5%;
+        right: 5%;
+        max-height: 93%;
+        padding: 7px;
+      }
+
+      .scoreNumber {
+        font-size: clamp(24px, 8.5vmin, 56px);
+      }
+
+      .scoreDetails {
+        font-size: 8.5px;
+        line-height: 1.1;
+      }
+
+      .resultActions button,
+      .nameRow button {
+        font-size: 8.5px;
+        padding: 4px 6px;
+      }
+
+      .nameRow input {
+        font-size: 8.5px;
+        padding: 4px 6px;
+      }
+    }
+
+    @media (orientation: landscape) and (max-height: 390px) {
+      .gameTitle {
+        font-size: 9px;
+        margin-bottom: 0;
+      }
+
+      .game {
+        border-radius: 7px;
+      }
+    }
+
+
   </style>
 </head>
 <body>
@@ -1377,6 +1454,41 @@
     const modeOverlay = document.getElementById("modeOverlay");
     const normalModeBtn = document.getElementById("normalModeBtn");
     const challengeModeBtn = document.getElementById("challengeModeBtn");
+
+    const CANVAS_ASPECT = 1000 / 620;
+
+    function getViewportSize() {
+      const vv = window.visualViewport;
+      return {
+        width: vv ? vv.width : window.innerWidth,
+        height: vv ? vv.height : window.innerHeight
+      };
+    }
+
+    function fitGameWindowToViewport() {
+      const viewport = getViewportSize();
+      const title = document.querySelector(".gameTitle");
+      const titleHeight = title ? title.getBoundingClientRect().height : 0;
+      const isLandscapePhone = viewport.width > viewport.height && viewport.height <= 520;
+      const sideGap = isLandscapePhone ? 2 : 8;
+      const bottomGap = isLandscapePhone ? 4 : 8;
+      const titleGap = title ? parseFloat(getComputedStyle(title).marginBottom || "0") : 0;
+      const availableHeight = Math.max(200, viewport.height - titleHeight - titleGap - bottomGap);
+      const widthByHeight = availableHeight * CANVAS_ASPECT;
+      const widthByScreen = viewport.width - sideGap;
+      const maxDesktopWidth = isLandscapePhone ? widthByScreen : 1280;
+      const fitWidth = Math.max(280, Math.min(widthByScreen, widthByHeight, maxDesktopWidth));
+
+      document.documentElement.style.setProperty("--fit-width", `${Math.floor(fitWidth)}px`);
+    }
+
+    window.addEventListener("resize", fitGameWindowToViewport);
+    window.addEventListener("orientationchange", () => setTimeout(fitGameWindowToViewport, 120));
+
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener("resize", fitGameWindowToViewport);
+      window.visualViewport.addEventListener("scroll", fitGameWindowToViewport);
+    }
 
     const scoreOverlay = document.getElementById("scoreOverlay");
     const scoreLabelEl = document.getElementById("scoreLabel");
@@ -1958,6 +2070,7 @@
     }
 
     function resetGame() {
+      fitGameWindowToViewport();
       stopRace();
       hideScoreOverlay();
 
@@ -1976,6 +2089,7 @@
     }
 
     function resetForNewCurve() {
+      fitGameWindowToViewport();
       stopRace();
       hideScoreOverlay();
 
@@ -3063,7 +3177,10 @@
       ctx.restore();
     }
 
+    fitGameWindowToViewport();
     resetGame();
+    requestAnimationFrame(fitGameWindowToViewport);
+    setTimeout(fitGameWindowToViewport, 250);
     modeOverlay.classList.remove("hidden");
     gameMode.current = "start";
   </script>
