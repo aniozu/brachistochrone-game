@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>最速降下曲線ゲーム v55 iphone-landscape-fit</title>
+  <title>最速降下曲線ゲーム v56 no-title-mobile-score</title>
   <style>
     :root {
       --bg: #0b0f16;
@@ -1385,11 +1385,30 @@
     }
 
 
+  
+    /* v56: remove the outside title and make stage/score more readable on phones. */
+    .gameTitle {
+      display: none !important;
+    }
+
+    .wrap {
+      width: var(--fit-width);
+      max-width: 99.9vw;
+      padding: 0;
+    }
+
+    @media (orientation: landscape) and (max-height: 520px) {
+      .wrap {
+        padding: 0;
+      }
+    }
+
+
   </style>
 </head>
 <body>
   <main class="wrap">
-    <div class="gameTitle">最速降下曲線ゲーム</div>
+    <div class="gameTitle" aria-hidden="true"></div>
 
     <div id="modeOverlay" class="modeOverlay">
       <div class="modeCard">
@@ -1467,16 +1486,13 @@
 
     function fitGameWindowToViewport() {
       const viewport = getViewportSize();
-      const title = document.querySelector(".gameTitle");
-      const titleHeight = title ? title.getBoundingClientRect().height : 0;
       const isLandscapePhone = viewport.width > viewport.height && viewport.height <= 520;
       const sideGap = isLandscapePhone ? 2 : 8;
-      const bottomGap = isLandscapePhone ? 4 : 8;
-      const titleGap = title ? parseFloat(getComputedStyle(title).marginBottom || "0") : 0;
-      const availableHeight = Math.max(200, viewport.height - titleHeight - titleGap - bottomGap);
+      const bottomGap = isLandscapePhone ? 2 : 6;
+      const availableHeight = Math.max(220, viewport.height - bottomGap);
       const widthByHeight = availableHeight * CANVAS_ASPECT;
       const widthByScreen = viewport.width - sideGap;
-      const maxDesktopWidth = isLandscapePhone ? widthByScreen : 1280;
+      const maxDesktopWidth = isLandscapePhone ? widthByScreen : 1320;
       const fitWidth = Math.max(280, Math.min(widthByScreen, widthByHeight, maxDesktopWidth));
 
       document.documentElement.style.setProperty("--fit-width", `${Math.floor(fitWidth)}px`);
@@ -2951,15 +2967,26 @@
 
       const total = gameMode.challengeScores.reduce((sum, value) => sum + value, 0);
 
+      const mobileView = canvas.getBoundingClientRect().width <= 620 || getViewportSize().height <= 520;
+      const hudX = mobileView ? 18 : 22;
+      const stageY = mobileView ? 58 : 36;
+      const totalY = mobileView ? 86 : 62;
+      const stageSize = mobileView
+        ? responsiveCanvasFont(24, 23, 34)
+        : responsiveCanvasFont(18, 16, 26);
+      const totalSize = mobileView
+        ? responsiveCanvasFont(18, 17, 27)
+        : responsiveCanvasFont(14, 13, 20);
+
       ctx.save();
       ctx.textAlign = "left";
-      ctx.fillStyle = "rgba(244,247,255,0.92)";
-      ctx.font = `900 ${responsiveCanvasFont(18, 16, 26)}px system-ui, sans-serif`;
-      ctx.fillText(`STAGE ${gameMode.challengeStage} / ${gameMode.challengeTotalStages}`, 22, 36);
+      ctx.fillStyle = "rgba(244,247,255,0.96)";
+      ctx.font = `950 ${stageSize}px system-ui, sans-serif`;
+      ctx.fillText(`STAGE ${gameMode.challengeStage} / ${gameMode.challengeTotalStages}`, hudX, stageY);
 
-      ctx.fillStyle = "rgba(244,247,255,0.72)";
-      ctx.font = `800 ${responsiveCanvasFont(14, 13, 20)}px system-ui, sans-serif`;
-      ctx.fillText(`TOTAL ${total.toFixed(1)}`, 22, 62);
+      ctx.fillStyle = "rgba(244,247,255,0.82)";
+      ctx.font = `900 ${totalSize}px system-ui, sans-serif`;
+      ctx.fillText(`TOTAL SCORE ${total.toFixed(1)}`, hudX, totalY);
       ctx.restore();
     }
 
