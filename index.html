@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>最速降下曲線ゲーム v56 no-title-mobile-score</title>
+  <title>最速降下曲線ゲーム v57 token-validated-score</title>
   <style>
     :root {
       --bg: #0b0f16;
@@ -1611,6 +1611,8 @@
       lastChallengeTotal: 0,
       lastChallengePayload: null,
       challengeAttemptId: "",
+      challengeToken: "",
+      tokenReady: false,
       scoreSubmitted: false
     };
 
@@ -1631,6 +1633,8 @@
       gameMode.stageJustFinished = false;
       gameMode.lastChallengePayload = null;
       gameMode.challengeAttemptId = "";
+      gameMode.challengeToken = "";
+      gameMode.tokenReady = false;
       gameMode.scoreSubmitted = false;
       scoreApiWarmupStarted = false;
       scoreApiWarmupDone = false;
@@ -1646,12 +1650,15 @@
       gameMode.stageJustFinished = false;
       gameMode.lastChallengePayload = null;
       gameMode.challengeAttemptId = makeAttemptId();
+      gameMode.challengeToken = "";
+      gameMode.tokenReady = false;
       gameMode.scoreSubmitted = false;
       scoreApiWarmupStarted = false;
       scoreApiWarmupDone = false;
       modeOverlay.classList.add("hidden");
       configureResultButtons("challengePlaying");
       B = randomStopPosition();
+      requestChallengeToken();
       resetGame();
     }
 
@@ -1668,6 +1675,8 @@
       gameMode.stageJustFinished = false;
       gameMode.lastChallengePayload = null;
       gameMode.challengeAttemptId = "";
+      gameMode.challengeToken = "";
+      gameMode.tokenReady = false;
       gameMode.scoreSubmitted = false;
       scoreApiWarmupStarted = false;
       scoreApiWarmupDone = false;
@@ -1895,6 +1904,30 @@
         });
     }
 
+    async function requestChallengeToken() {
+      if (!SCORE_API_URL || gameMode.current !== "challenge") {
+        return;
+      }
+
+      try {
+        const data = await jsonpRequest({
+          action: "token",
+          attemptId: gameMode.challengeAttemptId
+        });
+
+        if (!data.ok || !data.token) {
+          throw new Error(data.error || "token取得に失敗しました。");
+        }
+
+        gameMode.challengeToken = data.token;
+        gameMode.tokenReady = true;
+      } catch (error) {
+        gameMode.challengeToken = "";
+        gameMode.tokenReady = false;
+        console.warn("token error:", error);
+      }
+    }
+
     async function loadRanking() {
       const attemptId = gameMode.lastChallengePayload?.attemptId || "";
       const data = await jsonpRequest({
@@ -1935,11 +1968,24 @@
         return;
       }
 
+      if (!gameMode.tokenReady || !gameMode.challengeToken) {
+        submitStatus.textContent = "登録準備中です。もう一度押してください。";
+        submitScoreBtn.disabled = true;
+        await requestChallengeToken();
+        submitScoreBtn.disabled = false;
+
+        if (!gameMode.tokenReady || !gameMode.challengeToken) {
+          submitStatus.textContent = "登録準備に失敗しました。通信状態を確認してください。";
+          return;
+        }
+      }
+
       const name = sanitizeName(playerNameInput.value);
       localStorage.setItem("brachistoPlayerName", name);
 
       const payload = {
         ...gameMode.lastChallengePayload,
+        token: gameMode.challengeToken,
         name,
         userAgent: navigator.userAgent
       };
@@ -1951,6 +1997,7 @@
         const data = await jsonpRequest({
           action: "submit",
           attemptId: payload.attemptId,
+          token: payload.token,
           name: payload.name,
           score: payload.score,
           stages: JSON.stringify(payload.stages),
@@ -1962,6 +2009,8 @@
         }
 
         gameMode.scoreSubmitted = true;
+        gameMode.challengeToken = "";
+        gameMode.tokenReady = false;
         submitScoreBtn.disabled = true;
         submitStatus.textContent = "登録しました。ハイスコアを表示します。";
         renderRanking(data);
