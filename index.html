@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>最速降下曲線ゲーム v0.1.5 confirm-ranking-return</title>
+  <title>最速降下曲線ゲーム v0.1.6 confirm-only-during-ranking</title>
   <style>
     :root {
       --bg: #0b0f16;
@@ -1814,6 +1814,7 @@
 
 
 
+
     "use strict";
 
     const canvas = document.getElementById("canvas");
@@ -1959,6 +1960,12 @@
 
     function confirmReturnToTitleIfNeeded() {
       if (gameMode.current !== "challenge") {
+        return true;
+      }
+
+      const challengeComplete = gameMode.challengeStage >= gameMode.challengeTotalStages;
+
+      if (challengeComplete) {
         return true;
       }
 
@@ -3747,6 +3754,7 @@
     setTimeout(fitGameWindowToViewport, 250);
     modeOverlay.classList.remove("hidden");
     gameMode.current = "start";
+  
   
   
   
