@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>最速降下曲線ゲーム v0.1</title>
+  <title>最速降下曲線ゲーム v0.1.1 submit-lock</title>
   <style>
     :root {
       --bg: #0b0f16;
@@ -104,6 +104,15 @@
     button:disabled {
       opacity: 0.45;
       cursor: not-allowed;
+    }
+
+    body.scoreSubmitting button:not(#submitScoreBtn),
+    body.scoreSubmitting input {
+      pointer-events: none;
+    }
+
+    body.scoreSubmitting {
+      cursor: wait;
     }
 
     .miniHint {
@@ -1656,6 +1665,7 @@
   </main>
 
   <script>
+
     "use strict";
 
     const canvas = document.getElementById("canvas");
@@ -1712,6 +1722,71 @@
     const highScoreList = document.getElementById("highScoreList");
     const myRankLine = document.getElementById("myRankLine");
     const closeHighScoreBtn = document.getElementById("closeHighScoreBtn");
+
+    let isScoreSubmitting = false;
+
+    function setScoreSubmitting(isSubmitting) {
+      isScoreSubmitting = isSubmitting;
+      document.body.classList.toggle("scoreSubmitting", isSubmitting);
+
+      const controls = [
+        replayBtn,
+        tryAgainBtn,
+        newLayoutBtn,
+        normalModeBtn,
+        challengeModeBtn,
+        closeHighScoreBtn
+      ];
+
+      for (const control of controls) {
+        if (control) {
+          control.disabled = isSubmitting;
+        }
+      }
+
+      if (playerNameInput) {
+        playerNameInput.disabled = isSubmitting;
+      }
+
+      if (submitScoreBtn) {
+        submitScoreBtn.disabled = isSubmitting || gameMode.scoreSubmitted;
+      }
+    }
+
+    function blockWhileScoreSubmitting(e) {
+      if (!isScoreSubmitting) {
+        return false;
+      }
+
+      e.preventDefault();
+      e.stopPropagation();
+      if (typeof e.stopImmediatePropagation === "function") {
+        e.stopImmediatePropagation();
+      }
+
+      return true;
+    }
+
+    document.addEventListener("click", (e) => {
+      if (!isScoreSubmitting) return;
+
+      // 登録ボタンを押した直後に別ボタンへ連打しても、ここで全部止める。
+      if (e.target !== submitScoreBtn) {
+        blockWhileScoreSubmitting(e);
+      }
+    }, true);
+
+    document.addEventListener("pointerdown", (e) => {
+      if (isScoreSubmitting) {
+        blockWhileScoreSubmitting(e);
+      }
+    }, true);
+
+    document.addEventListener("pointerup", (e) => {
+      if (isScoreSubmitting) {
+        blockWhileScoreSubmitting(e);
+      }
+    }, true);
 
     // Google Apps ScriptのウェブアプリURLをここに入れてください。
     // 例: const SCORE_API_URL = "https://script.google.com/macros/s/xxxxxxxx/exec";
@@ -2145,6 +2220,10 @@
     }
 
     async function submitChallengeScore() {
+      if (isScoreSubmitting) {
+        return;
+      }
+
       if (gameMode.scoreSubmitted) {
         submitStatus.textContent = "このチャレンジ結果はすでに登録済みです。";
         submitScoreBtn.disabled = true;
@@ -2161,32 +2240,31 @@
         return;
       }
 
-      if (!gameMode.tokenReady || !gameMode.challengeToken) {
-        submitStatus.textContent = "登録準備中です。もう一度押してください。";
-        submitScoreBtn.disabled = true;
-        await requestChallengeToken();
-        submitScoreBtn.disabled = false;
-
-        if (!gameMode.tokenReady || !gameMode.challengeToken) {
-          submitStatus.textContent = "登録準備に失敗しました。通信状態を確認してください。";
-          return;
-        }
-      }
-
-      const name = sanitizeName(playerNameInput.value);
-      localStorage.setItem("brachistoPlayerName", name);
-
-      const payload = {
-        ...gameMode.lastChallengePayload,
-        token: gameMode.challengeToken,
-        name,
-        userAgent: navigator.userAgent
-      };
-
-      submitScoreBtn.disabled = true;
-      submitStatus.textContent = scoreApiWarmupDone ? "送信中..." : "送信中...";
+      setScoreSubmitting(true);
 
       try {
+        if (!gameMode.tokenReady || !gameMode.challengeToken) {
+          submitStatus.textContent = "登録準備中です...";
+          await requestChallengeToken();
+
+          if (!gameMode.tokenReady || !gameMode.challengeToken) {
+            submitStatus.textContent = "登録準備に失敗しました。通信状態を確認してください。";
+            return;
+          }
+        }
+
+        const name = sanitizeName(playerNameInput.value);
+        localStorage.setItem("brachistoPlayerName", name);
+
+        const payload = {
+          ...gameMode.lastChallengePayload,
+          token: gameMode.challengeToken,
+          name,
+          userAgent: navigator.userAgent
+        };
+
+        submitStatus.textContent = scoreApiWarmupDone ? "送信中..." : "送信中...";
+
         const data = await jsonpRequest({
           action: "submit",
           attemptId: payload.attemptId,
@@ -2204,14 +2282,14 @@
         gameMode.scoreSubmitted = true;
         gameMode.challengeToken = "";
         gameMode.tokenReady = false;
-        submitScoreBtn.disabled = true;
         submitStatus.textContent = "登録しました。ハイスコアを表示します。";
         renderRanking(data);
         showHighScoreWindow();
         submitStatus.textContent = "登録完了。この結果は再登録できません。";
       } catch (error) {
         submitStatus.textContent = `エラー: ${error.message}`;
-        submitScoreBtn.disabled = false;
+      } finally {
+        setScoreSubmitting(false);
       }
     }
 
@@ -2234,6 +2312,7 @@
 
     closeHighScoreBtn.addEventListener("click", (e) => {
       e.stopPropagation();
+      if (isScoreSubmitting) return;
       closeHighScoreWindow();
     });
 
@@ -2251,16 +2330,19 @@
 
     normalModeBtn.addEventListener("click", (e) => {
       e.stopPropagation();
+      if (isScoreSubmitting) return;
       enterNormalMode();
     });
 
     challengeModeBtn.addEventListener("click", (e) => {
       e.stopPropagation();
+      if (isScoreSubmitting) return;
       enterChallengeMode();
     });
 
     replayBtn.addEventListener("click", (e) => {
       e.stopPropagation();
+      if (isScoreSubmitting) return;
       if (!resultActionsAreReady()) return;
 
       hideScoreOverlay();
@@ -2271,6 +2353,7 @@
 
     tryAgainBtn.addEventListener("click", (e) => {
       e.stopPropagation();
+      if (isScoreSubmitting) return;
       if (!resultActionsAreReady()) return;
 
       if (gameMode.current === "challenge") {
@@ -2291,6 +2374,7 @@
 
     newLayoutBtn.addEventListener("click", (e) => {
       e.stopPropagation();
+      if (isScoreSubmitting) return;
       if (!resultActionsAreReady()) return;
 
       if (gameMode.current === "challenge" || gameMode.current === "normal") {
@@ -2387,6 +2471,7 @@
     }
 
     canvas.addEventListener("pointerdown", (e) => {
+      if (isScoreSubmitting) return;
       if (
         gameMode.current === "start" ||
         race.running ||
@@ -2428,6 +2513,7 @@
     });
 
     canvas.addEventListener("pointermove", (e) => {
+      if (isScoreSubmitting) return;
       if (!isActivePointer(e)) return;
 
       if (draggingStop) {
@@ -2477,6 +2563,7 @@
     });
 
     canvas.addEventListener("pointerup", (e) => {
+      if (isScoreSubmitting) return;
       if (!isActivePointer(e)) return;
 
       if (draggingStop) {
@@ -2538,6 +2625,7 @@
     });
 
     canvas.addEventListener("pointercancel", (e) => {
+      if (isScoreSubmitting) return;
       if (!isActivePointer(e)) return;
 
       if (draggingStop) {
@@ -3452,6 +3540,7 @@
     setTimeout(fitGameWindowToViewport, 250);
     modeOverlay.classList.remove("hidden");
     gameMode.current = "start";
+  
   </script>
 </body>
 </html>
