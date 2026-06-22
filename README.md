@@ -1,5 +1,12 @@
 # 最速降下曲線ゲーム / Brachistochrone Curve Game
 
+## 遊ぶ / Play
+
+* 日本語版: https://aniozu.github.io/brachistochrone-game/
+* English version: https://aniozu.github.io/brachistochrone-game/index_en.html
+
+---
+
 **最速降下曲線ゲーム**は、スタートとゴールを結ぶ曲線を自分で描き、重力のもとでどれだけ速く到達できるかを試すブラウザゲームです。
 
 数学で知られる「最速降下曲線（brachistochrone curve）」をテーマにしています。最速の曲線はサイクロイドですが、このゲームではその答えをただ見るのではなく、自分で曲線を描いて近づけていくことを楽しめます。
@@ -60,16 +67,21 @@ RANKINGモードでは5ステージの合計点がランキングに登録され
 
 ---
 
-## 技術メモ
+## ライセンス
 
-このゲームはHTML、CSS、JavaScriptで作られています。
-GitHub Pages上で動作する、単一ページのブラウザゲームです。
-
-ランキング登録にはGoogle Apps ScriptとGoogle Spreadsheetを利用しています。
+このプロジェクトは MIT License のもとで公開されています。
+教育目的での利用・改変・再配布を歓迎します。
 
 ---
 
 # Brachistochrone Curve Game
+
+## Play
+
+* Japanese version: https://aniozu.github.io/brachistochrone-game/
+* English version: https://aniozu.github.io/brachistochrone-game/index_en.html
+
+---
 
 **Brachistochrone Curve Game** is a browser game where you draw a curve from a start point to a goal and see how fast a ball can travel along it under gravity.
 
@@ -133,11 +145,7 @@ On smartphones, landscape orientation is recommended.
 
 ---
 
-## Technical Notes
+## License
 
-This game is built with HTML, CSS, and JavaScript.
-It runs as a single-page browser game on GitHub Pages.
-
-The ranking feature uses Google Apps Script and Google Spreadsheet.
-
----
+This project is licensed under the MIT License.
+Educational use, modification, and redistribution are welcome.
