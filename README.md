@@ -1,5 +1,7 @@
 # 最速降下曲線ゲーム / Brachistochrone Curve Game
 
+<img width="474" height="271" alt="image" src="https://github.com/user-attachments/assets/f1fc795f-f4ed-4cea-9027-8d8c0e3b4786" />
+
 ## 遊ぶ / Play
 
 * 日本語版: https://aniozu.github.io/brachistochrone-game/
