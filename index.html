@@ -1808,6 +1808,16 @@
       left: auto !important;
       pointer-events: auto;
     }
+    /* Let the complete title label determine the pill width. The old
+       max-width: calc(100% - 24px) clipped the label in this column. */
+    .topRightControls > .titleReturnBtn {
+      flex: 0 0 auto;
+      width: max-content;
+      min-width: max-content;
+      max-width: none !important;
+      white-space: nowrap;
+      box-sizing: border-box;
+    }
     @media (max-width: 650px), (max-height: 520px) {
       .topRightControls {
         top: 6px;
