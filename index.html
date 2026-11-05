@@ -612,11 +612,11 @@
     }
 
     .modeCard {
+      cursor: default;
       border: 1px solid rgba(255,255,255,0.18);
       border-radius: 18px;
       background: rgba(255,255,255,0.08);
       padding: clamp(13px, 2.1vmin, 19px) clamp(14px, 2vmin, 20px);
-      cursor: pointer;
       transition: transform .15s ease, background .15s ease, border-color .15s ease;
       text-align: center;
       user-select: none;
@@ -1911,7 +1911,7 @@
       <div class="canvasBox">
         <div class="topRightControls">
         <button id="titleReturnBtn" class="titleReturnBtn hidden" type="button">タイトル画面に戻る</button>
-        <label id="answerToggleLabel" class="answerToggle hidden">
+        <label id="answerToggleLabel" class="answerToggle hidden" title="次のトライ・リプレイから反映">
           <input id="showAnswerCheckbox" type="checkbox">
           <span>答えを表示</span>
         </label>
@@ -2206,6 +2206,10 @@
     let playerSim = null;
     let bestSim = null;
 
+    // Snapshot the checkbox at the start of each race. Changing it later
+    // only affects the NEXT try or replay, never the current race or results.
+    let showAnswerThisRace = false;
+
     let race = {
       running: false,
       finished: false,
@@ -2252,18 +2256,11 @@
 
     showAnswerCheckbox.addEventListener("change", () => {
       if (gameMode.current !== "normal") return;
-      // Redraw a finished run when toggled; before the first run the answer stays hidden.
-      if (race.finished && playerSim && bestSim) {
-        drawScene({
-          showBestCurve: true,
-          showRails: true,
-          playerBall: sampleTimeline(playerSim.timeline, playerSim.timeline[playerSim.timeline.length - 1].t),
-          bestBall: sampleTimeline(bestSim.timeline, bestSim.timeline[bestSim.timeline.length - 1].t)
-        });
-      } else if (!race.running) {
+      // Merely prepares the NEXT race/replay. Never reveal the cycloid here.
+      // In particular, the score overlay and the completed frame stay unchanged.
+      if (!race.running && !race.finished && !scoreOverlay.classList.contains("show")) {
         drawScene();
       }
-      // A running race is redrawn with the current setting on its next frame.
     });
 
     function enterNormalMode() {
@@ -3537,6 +3534,8 @@
 
       race.running = true;
       race.finished = false;
+      // Use the setting selected at the start, not live checkbox changes.
+      showAnswerThisRace = gameMode.current !== "normal" || showAnswerCheckbox.checked;
       race.startStamp = null;
 
       setHint("レース中！");
@@ -3555,7 +3554,7 @@
       const t = ((stamp - race.startStamp) / 1000) * config.playbackSpeed;
       const playerEnd = playerSim.timeline[playerSim.timeline.length - 1].t;
       const bestEnd = bestSim.timeline[bestSim.timeline.length - 1].t;
-      const total = gameMode.current === "normal" && !showAnswerCheckbox.checked
+      const total = !showAnswerThisRace
         ? playerEnd : Math.max(playerEnd, bestEnd);
       const clampedT = Math.min(t, total);
 
@@ -3588,11 +3587,11 @@
       const playerEnd = playerSim.timeline[playerSim.timeline.length - 1].t;
       const bestEnd = bestSim.timeline[bestSim.timeline.length - 1].t;
 
+      // Keep the player's path at the result, but hide the answer
+      // until another race is actually started (next try or replay).
       drawScene({
-        showBestCurve: true,
         showRails: true,
         playerBall: sampleTimeline(playerSim.timeline, playerEnd),
-        bestBall: sampleTimeline(bestSim.timeline, bestEnd),
         showReturnMark: false,
         showTurnMark: false
       });
@@ -3766,14 +3765,11 @@
       drawStartEnd();
       drawChallengeStatus();
 
-      // Checking this before a run only prepares the reveal: do not show the
-      // cycloid while the player is still drawing the path.
-      const canShowAnswer = gameMode.current !== "normal" || (
-        showAnswerCheckbox.checked && (race.running || race.finished)
-      );
-      const shouldShowBest = canShowAnswer && (
-        options.showBestCurve || race.running || race.finished
-      );
+      // Only show the optimal path WHILE a race is running, using
+      // the snapshot taken in startRace(). The score/result screen never
+      // reveals it, even if the checkbox is toggled while results are open.
+      const canShowAnswer = race.running && showAnswerThisRace;
+      const shouldShowBest = canShowAnswer;
       const shouldShowRails = Boolean(options.showRails);
 
       if (rawPoints.length > 1 && playerCurve.length === 0) {
